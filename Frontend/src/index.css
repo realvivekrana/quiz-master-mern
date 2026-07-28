@@ -1,59 +1,120 @@
 :root {
-  --bg: #12143A;
-  --panel: #1B1E52;
+  --bg: #12143a;
+  --panel: #1b1e52;
   --panel-raised: #232764;
-  --paper: #FFFBF2;
-  --amber: #F5A623;
-  --amber-dim: #C98418;
-  --teal: #3FC6A6;
-  --red: #E8553F;
-  --ink: #14163A;
-  --muted: #8E92C7;
-  --border: #33377A;
+  --paper: #fffbf2;
+  --amber: #f5a623;
+  --amber-dim: #c98418;
+  --teal: #3fc6a6;
+  --red: #e8553f;
+  --ink: #14163a;
+  --muted: #8e92c7;
+  --border: #33377a;
 
   --font-display: 'Space Grotesk', sans-serif;
   --font-body: 'Inter', sans-serif;
   --font-mono: 'JetBrains Mono', monospace;
 }
 
-* { box-sizing: border-box; }
+/* =========================================
+   GLOBAL RESET
+========================================= */
 
-html, body, #root {
-  height: 100%;
+* {
+  box-sizing: border-box;
+}
+
+html {
+  min-height: 100%;
+  background: var(--bg);
 }
 
 body {
+  min-height: 100vh;
   margin: 0;
+  padding: 0;
+
   background: var(--bg);
-  background-image:
-    radial-gradient(circle at 15% 10%, rgba(245,166,35,0.08), transparent 40%),
-    radial-gradient(circle at 85% 90%, rgba(63,198,166,0.08), transparent 40%);
+
   color: var(--paper);
   font-family: var(--font-body);
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-a { color: inherit; text-decoration: none; }
-button { font-family: inherit; cursor: pointer; }
+#root {
+  min-height: 100vh;
 
-::selection { background: var(--amber); color: var(--ink); }
+  background:
+    radial-gradient(
+      circle at 15% 10%,
+      rgba(245, 166, 35, 0.08),
+      transparent 40%
+    ),
+    radial-gradient(
+      circle at 85% 90%,
+      rgba(63, 198, 166, 0.08),
+      transparent 40%
+    ),
+    var(--bg);
+}
+
+/* =========================================
+   BASIC ELEMENTS
+========================================= */
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+::selection {
+  background: var(--amber);
+  color: var(--ink);
+}
 
 :focus-visible {
   outline: 2px solid var(--amber);
   outline-offset: 2px;
 }
 
+/* =========================================
+   CONTAINER
+========================================= */
+
 .container {
+  width: 100%;
   max-width: 1080px;
   margin: 0 auto;
-  padding: 0 24px;
+  padding-left: 24px;
+  padding-right: 24px;
 }
 
-h1, h2, h3 {
+/* =========================================
+   HEADINGS
+========================================= */
+
+h1,
+h2,
+h3 {
   font-family: var(--font-display);
   margin: 0;
   letter-spacing: -0.01em;
 }
+
+/* =========================================
+   EYEBROW
+========================================= */
 
 .eyebrow {
   font-family: var(--font-mono);
@@ -63,123 +124,301 @@ h1, h2, h3 {
   color: var(--amber);
 }
 
+/* =========================================
+   BUTTONS
+========================================= */
+
 .btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
+
   padding: 12px 22px;
+
   border-radius: 10px;
+  border: 1px solid transparent;
+
   font-family: var(--font-display);
   font-weight: 600;
   font-size: 15px;
-  border: 1px solid transparent;
-  transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease,
+    background 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease;
 }
-.btn:active { transform: translateY(1px); }
+
+.btn:active {
+  transform: translateY(1px);
+}
+
+/* Primary button */
 
 .btn-primary {
   background: var(--amber);
   color: var(--ink);
+
   box-shadow: 0 4px 0 var(--amber-dim);
 }
-.btn-primary:hover { box-shadow: 0 6px 0 var(--amber-dim); transform: translateY(-2px); }
+
+.btn-primary:hover:not(:disabled) {
+  box-shadow: 0 6px 0 var(--amber-dim);
+  transform: translateY(-2px);
+}
+
+/* Ghost button */
 
 .btn-ghost {
   background: transparent;
   color: var(--paper);
   border-color: var(--border);
 }
-.btn-ghost:hover { border-color: var(--amber); color: var(--amber); }
+
+.btn-ghost:hover:not(:disabled) {
+  border-color: var(--amber);
+  color: var(--amber);
+}
+
+/* =========================================
+   CARD
+========================================= */
 
 .card {
   background: var(--panel);
+
   border: 1px solid var(--border);
   border-radius: 16px;
+
   padding: 24px;
 }
 
+/* =========================================
+   INPUT
+========================================= */
+
 .input {
   width: 100%;
+
   padding: 12px 14px;
+
   border-radius: 10px;
   border: 1px solid var(--border);
+
   background: var(--panel-raised);
   color: var(--paper);
+
   font-family: var(--font-body);
   font-size: 15px;
+
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
 }
-.input:focus { border-color: var(--amber); outline: none; }
-.input::placeholder { color: var(--muted); }
+
+.input:focus {
+  border-color: var(--amber);
+  outline: none;
+
+  box-shadow: 0 0 0 3px rgba(245, 166, 35, 0.08);
+}
+
+.input::placeholder {
+  color: var(--muted);
+}
+
+/* =========================================
+   FORM
+========================================= */
 
 label {
   display: block;
+
   font-size: 13px;
   color: var(--muted);
+
   margin-bottom: 6px;
+
   font-family: var(--font-mono);
 }
 
-.field { margin-bottom: 18px; }
+.field {
+  margin-bottom: 18px;
+}
+
+/* =========================================
+   ERROR TEXT
+========================================= */
 
 .error-text {
   color: var(--red);
+
   font-size: 13px;
   margin-top: 8px;
+
   font-family: var(--font-mono);
 }
 
-/* ---- Signature element: scoreboard flip digits ---- */
+/* =========================================
+   SCOREBOARD
+========================================= */
+
 .scoreboard {
   display: inline-flex;
   gap: 6px;
 }
+
 .scoreboard .digit {
   width: 40px;
   height: 54px;
+
   background: var(--ink);
+
   border-radius: 6px;
   border: 1px solid var(--border);
+
   display: flex;
   align-items: center;
   justify-content: center;
+
   font-family: var(--font-mono);
   font-weight: 700;
   font-size: 28px;
+
   color: var(--amber);
+
   position: relative;
-  box-shadow: inset 0 -2px 0 rgba(0,0,0,0.4);
+
+  box-shadow:
+    inset 0 -2px 0 rgba(0, 0, 0, 0.4);
 }
+
+/* Line through scoreboard digit */
+
 .scoreboard .digit::after {
   content: '';
+
   position: absolute;
-  left: 0; right: 0; top: 50%;
+
+  left: 0;
+  right: 0;
+  top: 50%;
+
   height: 1px;
-  background: rgba(0,0,0,0.5);
+
+  background: rgba(0, 0, 0, 0.5);
 }
+
+/* Small scoreboard */
+
 .scoreboard.small .digit {
   width: 26px;
   height: 34px;
+
   font-size: 17px;
+
   border-radius: 4px;
 }
-.scoreboard.danger .digit { color: var(--red); }
+
+/* Danger timer */
+
+.scoreboard.danger .digit {
+  color: var(--red);
+}
+
+/* =========================================
+   PILL
+========================================= */
 
 .pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
   font-family: var(--font-mono);
   font-size: 12px;
+
   padding: 4px 10px;
+
   border-radius: 999px;
   border: 1px solid var(--border);
+
   color: var(--muted);
 }
+
+/* =========================================
+   LOADER
+========================================= */
 
 .loader {
   width: 28px;
   height: 28px;
+
   border: 3px solid var(--border);
   border-top-color: var(--amber);
+
   border-radius: 50%;
+
   animation: spin 0.8s linear infinite;
 }
-@keyframes spin { to { transform: rotate(360deg); } }
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* =========================================
+   SCROLLBAR
+========================================= */
+
+::-webkit-scrollbar {
+  width: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--muted);
+}
+
+/* =========================================
+   RESPONSIVE
+========================================= */
+
+@media (max-width: 768px) {
+  .container {
+    padding-left: 18px;
+    padding-right: 18px;
+  }
+
+  .card {
+    padding: 20px;
+  }
+}
+
+@media (max-width: 480px) {
+  .container {
+    padding-left: 14px;
+    padding-right: 14px;
+  }
+
+  .card {
+    padding: 18px;
+    border-radius: 14px;
+  }
+
+  .btn {
+    padding: 11px 18px;
+    font-size: 14px;
+  }
+}

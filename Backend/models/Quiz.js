@@ -1,29 +1,72 @@
 import mongoose from 'mongoose'
 
-const questionSchema = new mongoose.Schema({
-  text: { type: String, required: true },
-  options: {
-    type: [String],
-    required: true,
-    validate: (arr) => arr.length >= 2
+const optionSchema = new mongoose.Schema(
+  {
+    text: {
+      type: String,
+      required: true,
+      trim: true
+    },
+
+    isCorrect: {
+      type: Boolean,
+      default: false
+    }
   },
-  correctOption: { type: Number, required: true } // index into options[]
-})
+  {
+    _id: false
+  }
+)
+
+const questionSchema = new mongoose.Schema(
+  {
+    questionText: {
+      type: String,
+      required: true,
+      trim: true
+    },
+
+    options: {
+      type: [optionSchema],
+      required: true,
+      validate: {
+        validator: function (options) {
+          return options.length >= 2
+        },
+        message: 'Each question must have at least 2 options'
+      }
+    }
+  }
+)
 
 const quizSchema = new mongoose.Schema(
   {
-    title: { type: String, required: true, trim: true },
-    description: { type: String, default: '' },
-    category: { type: String, default: 'General' },
-    durationMinutes: { type: Number, default: 5 },
+    title: {
+      type: String,
+      required: true,
+      trim: true
+    },
+
+    description: {
+      type: String,
+      trim: true,
+      default: ''
+    },
+
     questions: {
       type: [questionSchema],
-      required: true,
-      validate: (arr) => arr.length > 0
+      default: []
     },
-    createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
+
+    createdBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      required: true
+    }
   },
-  { timestamps: true }
+  {
+    timestamps: true
+  }
 )
 
 export default mongoose.model('Quiz', quizSchema)
