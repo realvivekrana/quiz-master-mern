@@ -29,10 +29,12 @@ const questionSchema = new mongoose.Schema(
     options: {
       type: [optionSchema],
       required: true,
+
       validate: {
-        validator: function (options) {
+        validator(options) {
           return options.length >= 2
         },
+
         message: 'Each question must have at least 2 options'
       }
     }
@@ -41,6 +43,10 @@ const questionSchema = new mongoose.Schema(
 
 const quizSchema = new mongoose.Schema(
   {
+    // ==========================================
+    // Basic Information
+    // ==========================================
+
     title: {
       type: String,
       required: true,
@@ -53,10 +59,56 @@ const quizSchema = new mongoose.Schema(
       default: ''
     },
 
+    // ==========================================
+    // Category
+    // ==========================================
+
+    category: {
+      type: String,
+      required: true,
+      trim: true,
+      default: 'General'
+    },
+
+    // ==========================================
+    // Difficulty
+    // ==========================================
+
+    difficulty: {
+      type: String,
+
+      enum: [
+        'Easy',
+        'Medium',
+        'Hard'
+      ],
+
+      default: 'Easy'
+    },
+
+    // ==========================================
+    // Quiz Duration
+    // ==========================================
+
+    durationMinutes: {
+      type: Number,
+      min: 1,
+      max: 120,
+      default: 5
+    },
+
+    // ==========================================
+    // Questions
+    // ==========================================
+
     questions: {
       type: [questionSchema],
       default: []
     },
+
+    // ==========================================
+    // Creator
+    // ==========================================
 
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
@@ -69,4 +121,7 @@ const quizSchema = new mongoose.Schema(
   }
 )
 
-export default mongoose.model('Quiz', quizSchema)
+export default mongoose.model(
+  'Quiz',
+  quizSchema
+)
