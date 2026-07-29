@@ -19,6 +19,7 @@ import Dashboard from './pages/Dashboard'
 import QuizPlay from './pages/QuizPlay'
 import Result from './pages/Result'
 import Leaderboard from './pages/Leaderboard'
+import QuizHistory from './pages/QuizHistory'
 
 // ==========================================
 // ADMIN PAGES
@@ -27,6 +28,11 @@ import Leaderboard from './pages/Leaderboard'
 import AdminDashboard from './pages/AdminDashboard'
 import CreateQuiz from './pages/CreateQuiz'
 import EditQuiz from './pages/EditQuiz'
+import AdminUsers from './pages/AdminUsers'
+
+// ==========================================
+// APP
+// ==========================================
 
 export default function App() {
   return (
@@ -38,16 +44,19 @@ export default function App() {
             PUBLIC ROUTES
         =================================== */}
 
+        {/* Home */}
         <Route
           path="/"
           element={<Home />}
         />
 
+        {/* Login */}
         <Route
           path="/login"
           element={<Login />}
         />
 
+        {/* Register */}
         <Route
           path="/register"
           element={<Register />}
@@ -58,7 +67,6 @@ export default function App() {
         =================================== */}
 
         {/* Dashboard */}
-
         <Route
           path="/dashboard"
           element={
@@ -68,8 +76,17 @@ export default function App() {
           }
         />
 
-        {/* Play Quiz */}
+        {/* Quiz History */}
+        <Route
+          path="/history"
+          element={
+            <PrivateRoute>
+              <QuizHistory />
+            </PrivateRoute>
+          }
+        />
 
+        {/* Play Quiz */}
         <Route
           path="/quiz/:id"
           element={
@@ -80,7 +97,6 @@ export default function App() {
         />
 
         {/* Quiz Result */}
-
         <Route
           path="/result/:id"
           element={
@@ -91,7 +107,6 @@ export default function App() {
         />
 
         {/* Quiz Leaderboard */}
-
         <Route
           path="/quiz/:id/leaderboard"
           element={
@@ -106,7 +121,6 @@ export default function App() {
         =================================== */}
 
         {/* Admin Dashboard */}
-
         <Route
           path="/admin"
           element={
@@ -116,8 +130,17 @@ export default function App() {
           }
         />
 
-        {/* Create Quiz */}
+        {/* Admin User Management */}
+        <Route
+          path="/admin/users"
+          element={
+            <AdminRoute>
+              <AdminUsers />
+            </AdminRoute>
+          }
+        />
 
+        {/* Create Quiz */}
         <Route
           path="/admin/quizzes/create"
           element={
@@ -128,7 +151,6 @@ export default function App() {
         />
 
         {/* Edit Quiz */}
-
         <Route
           path="/admin/quizzes/:id/edit"
           element={

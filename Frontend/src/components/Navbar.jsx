@@ -5,6 +5,10 @@ export default function Navbar() {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
 
+  // ==========================================
+  // LOGOUT
+  // ==========================================
+
   function handleLogout() {
     logout()
     navigate('/login')
@@ -22,17 +26,21 @@ export default function Navbar() {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          padding: '18px 24px'
+          padding: '18px 24px',
+          gap: 20
         }}
       >
-        {/* Logo */}
+        {/* ==================================
+            LOGO
+        =================================== */}
 
         <Link
           to="/"
           style={{
             display: 'flex',
             alignItems: 'center',
-            gap: 10
+            gap: 10,
+            flexShrink: 0
           }}
         >
           <span
@@ -63,13 +71,17 @@ export default function Navbar() {
           </span>
         </Link>
 
-        {/* Navigation */}
+        {/* ==================================
+            NAVIGATION
+        =================================== */}
 
         <nav
           style={{
             display: 'flex',
             alignItems: 'center',
-            gap: 20
+            justifyContent: 'flex-end',
+            gap: 12,
+            flexWrap: 'wrap'
           }}
         >
           {user ? (
@@ -83,29 +95,60 @@ export default function Navbar() {
                 Dashboard
               </Link>
 
-              {/* Admin Panel - Only Admin */}
+              {/* History */}
+
+              <Link
+                to="/history"
+                className="pill"
+              >
+                History
+              </Link>
+
+              {/* ==================================
+                  ADMIN ONLY
+              =================================== */}
 
               {user.role === 'admin' && (
-                <Link
-                  to="/admin"
-                  className="pill"
-                  style={{
-                    color: 'var(--amber)',
-                    borderColor: 'var(--amber)'
-                  }}
-                >
-                  Admin
-                </Link>
+                <>
+                  {/* Admin Dashboard */}
+
+                  <Link
+                    to="/admin"
+                    className="pill"
+                    style={{
+                      color: 'var(--amber)',
+                      borderColor: 'var(--amber)'
+                    }}
+                  >
+                    Admin
+                  </Link>
+
+                  {/* User Management */}
+
+                  <Link
+                    to="/admin/users"
+                    className="pill"
+                    style={{
+                      color: 'var(--teal)',
+                      borderColor: 'var(--teal)'
+                    }}
+                  >
+                    Users
+                  </Link>
+                </>
               )}
 
-              {/* User Name */}
+              {/* ==================================
+                  USER INFO
+              =================================== */}
 
               <div
                 style={{
                   display: 'flex',
                   flexDirection: 'column',
                   alignItems: 'flex-end',
-                  gap: 2
+                  gap: 2,
+                  marginLeft: 5
                 }}
               >
                 <span
@@ -134,7 +177,9 @@ export default function Navbar() {
                 </span>
               </div>
 
-              {/* Logout */}
+              {/* ==================================
+                  LOGOUT
+              =================================== */}
 
               <button
                 type="button"
@@ -146,12 +191,16 @@ export default function Navbar() {
             </>
           ) : (
             <>
+              {/* Login */}
+
               <Link
                 to="/login"
                 className="btn btn-ghost"
               >
                 Log in
               </Link>
+
+              {/* Register */}
 
               <Link
                 to="/register"
