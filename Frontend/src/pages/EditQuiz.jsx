@@ -1,18 +1,13 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
+
 import api from '../api/axios'
 
-function createEmptyQuestion() {
-  return {
-    questionText: '',
-    options: [
-      { text: '', isCorrect: true },
-      { text: '', isCorrect: false },
-      { text: '', isCorrect: false },
-      { text: '', isCorrect: false }
-    ]
-  }
-}
+const createEmptyQuestion = () => ({
+  questionText: '',
+  options: ['', '', '', ''],
+  correctAnswer: 0
+})
 
 export default function EditQuiz() {
   const { id } = useParams()
@@ -23,10 +18,10 @@ export default function EditQuiz() {
     description: '',
     category: '',
     difficulty: 'Easy',
-    durationMinutes: 5
+    durationMinutes: 5,
+    questions: []
   })
 
-  const [questions, setQuestions] = useState([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
@@ -41,43 +36,50 @@ export default function EditQuiz() {
         setLoading(true)
         setError('')
 
-        const { data } = await api.get(`/quizzes/${id}`)
+        const { data } = await api.get(
+          `/quizzes/${id}`
+        )
 
-        // Backend response:
-        // {
-        //   quiz: {...}
-        // }
-
-        const quiz = data.quiz
-
-        if (!quiz) {
-          setError('Quiz not found.')
-          return
-        }
+        const quiz = data.quiz || data
 
         setForm({
           title: quiz.title || '',
           description: quiz.description || '',
-          category: quiz.category || 'General',
-          difficulty: quiz.difficulty || 'Easy',
-          durationMinutes: quiz.durationMinutes || 5
-        })
+          category: quiz.category || '',
+          difficulty:
+            quiz.difficulty || 'Easy',
+          durationMinutes:
+            Number(quiz.durationMinutes) || 5,
 
-        setQuestions(
-          Array.isArray(quiz.questions)
-            ? quiz.questions.map((question) => ({
-                questionText: question.questionText || '',
-                options: Array.isArray(question.options)
-                  ? question.options.map((option) => ({
-                      text: option.text || '',
-                      isCorrect: option.isCorrect === true
-                    }))
-                  : []
-              }))
-            : []
-        )
+          questions:
+            quiz.questions?.length > 0
+              ? quiz.questions.map(
+                  (question) => ({
+                    _id: question._id,
+
+                    questionText:
+                      question.questionText ||
+                      question.question ||
+                      '',
+
+                    options:
+                      normaliseOptions(
+                        question.options
+                      ),
+
+                    correctAnswer:
+                      getCorrectAnswer(
+                        question
+                      )
+                  })
+                )
+              : [createEmptyQuestion()]
+        })
       } catch (err) {
-        console.error('Load quiz error:', err)
+        console.error(
+          'Load quiz error:',
+          err
+        )
 
         setError(
           err.response?.data?.message ||
@@ -92,93 +94,108 @@ export default function EditQuiz() {
   }, [id])
 
   // ==========================================
-  // BASIC FIELDS
+  // BASIC FIELD CHANGE
   // ==========================================
 
   function handleChange(event) {
     const { name, value } = event.target
 
-    setForm((prev) => ({
-      ...prev,
-      [name]: value
+    setForm((current) => ({
+      ...current,
+
+      [name]:
+        name === 'durationMinutes'
+          ? Number(value)
+          : value
     }))
   }
 
   // ==========================================
-  // QUESTION TEXT
+  // QUESTION CHANGE
   // ==========================================
 
-  function updateQuestion(questionIndex, value) {
-    setQuestions((prev) =>
-      prev.map((question, index) =>
-        index === questionIndex
-          ? {
-              ...question,
-              questionText: value
-            }
-          : question
-      )
-    )
+  function handleQuestionChange(
+    questionIndex,
+    value
+  ) {
+    setForm((current) => ({
+      ...current,
+
+      questions:
+        current.questions.map(
+          (question, index) =>
+            index === questionIndex
+              ? {
+                  ...question,
+                  questionText: value
+                }
+              : question
+        )
+    }))
   }
 
   // ==========================================
-  // OPTION TEXT
+  // OPTION CHANGE
   // ==========================================
 
-  function updateOption(
+  function handleOptionChange(
     questionIndex,
     optionIndex,
     value
   ) {
-    setQuestions((prev) =>
-      prev.map((question, qIndex) => {
-        if (qIndex !== questionIndex) {
-          return question
-        }
+    setForm((current) => ({
+      ...current,
 
-        return {
-          ...question,
+      questions:
+        current.questions.map(
+          (question, index) => {
+            if (index !== questionIndex) {
+              return question
+            }
 
-          options: question.options.map(
-            (option, oIndex) =>
-              oIndex === optionIndex
-                ? {
-                    ...option,
-                    text: value
-                  }
-                : option
-          )
-        }
-      })
-    )
+            return {
+              ...question,
+
+              options:
+                question.options.map(
+                  (
+                    option,
+                    currentOptionIndex
+                  ) =>
+                    currentOptionIndex ===
+                    optionIndex
+                      ? value
+                      : option
+                )
+            }
+          }
+        )
+    }))
   }
 
   // ==========================================
-  // SET CORRECT ANSWER
+  // CORRECT ANSWER
   // ==========================================
 
-  function setCorrectOption(
+  function handleCorrectAnswer(
     questionIndex,
     optionIndex
   ) {
-    setQuestions((prev) =>
-      prev.map((question, qIndex) => {
-        if (qIndex !== questionIndex) {
-          return question
-        }
+    setForm((current) => ({
+      ...current,
 
-        return {
-          ...question,
-
-          options: question.options.map(
-            (option, oIndex) => ({
-              ...option,
-              isCorrect: oIndex === optionIndex
-            })
-          )
-        }
-      })
-    )
+      questions:
+        current.questions.map(
+          (question, index) =>
+            index === questionIndex
+              ? {
+                  ...question,
+                  correctAnswer:
+                    optionIndex
+                }
+              : question
+        )
+    }))
   }
 
   // ==========================================
@@ -186,31 +203,34 @@ export default function EditQuiz() {
   // ==========================================
 
   function addQuestion() {
-    setQuestions((prev) => [
-      ...prev,
-      createEmptyQuestion()
-    ])
+    setForm((current) => ({
+      ...current,
+
+      questions: [
+        ...current.questions,
+        createEmptyQuestion()
+      ]
+    }))
   }
 
   // ==========================================
   // REMOVE QUESTION
   // ==========================================
 
-  function removeQuestion(questionIndex) {
-    if (questions.length === 1) {
-      setError(
-        'Quiz must contain at least one question.'
-      )
+  function removeQuestion(indexToRemove) {
+    if (form.questions.length <= 1) {
       return
     }
 
-    setError('')
+    setForm((current) => ({
+      ...current,
 
-    setQuestions((prev) =>
-      prev.filter(
-        (_, index) => index !== questionIndex
-      )
-    )
+      questions:
+        current.questions.filter(
+          (_, index) =>
+            index !== indexToRemove
+        )
+    }))
   }
 
   // ==========================================
@@ -223,79 +243,68 @@ export default function EditQuiz() {
     }
 
     if (!form.category.trim()) {
-      return 'Category is required.'
+      return 'Quiz category is required.'
     }
-
-    const duration = Number(form.durationMinutes)
 
     if (
-      !Number.isInteger(duration) ||
-      duration < 1 ||
-      duration > 120
+      !form.durationMinutes ||
+      form.durationMinutes < 1
     ) {
-      return 'Duration must be between 1 and 120 minutes.'
+      return 'Duration must be at least 1 minute.'
     }
 
-    if (questions.length === 0) {
-      return 'At least one question is required.'
+    if (form.questions.length === 0) {
+      return 'Quiz must contain at least one question.'
     }
 
     for (
-      let questionIndex = 0;
-      questionIndex < questions.length;
-      questionIndex++
+      let index = 0;
+      index < form.questions.length;
+      index++
     ) {
-      const question = questions[questionIndex]
+      const question =
+        form.questions[index]
 
       if (!question.questionText.trim()) {
         return `Question ${
-          questionIndex + 1
-        } cannot be empty.`
+          index + 1
+        } is required.`
       }
 
       if (
-        !Array.isArray(question.options) ||
-        question.options.length < 2
-      ) {
-        return `Question ${
-          questionIndex + 1
-        } must have at least 2 options.`
-      }
-
-      const hasEmptyOption =
         question.options.some(
-          (option) => !option.text.trim()
+          (option) =>
+            !String(option).trim()
         )
-
-      if (hasEmptyOption) {
-        return `Please fill all options in Question ${
-          questionIndex + 1
+      ) {
+        return `Fill all options for question ${
+          index + 1
         }.`
       }
 
-      const correctCount =
-        question.options.filter(
-          (option) => option.isCorrect
-        ).length
-
-      if (correctCount !== 1) {
-        return `Question ${
-          questionIndex + 1
-        } must have exactly one correct answer.`
+      if (
+        question.correctAnswer < 0 ||
+        question.correctAnswer >=
+          question.options.length
+      ) {
+        return `Select a correct answer for question ${
+          index + 1
+        }.`
       }
     }
 
-    return null
+    return ''
   }
 
   // ==========================================
-  // UPDATE QUIZ
+  // SAVE QUIZ
   // ==========================================
 
   async function handleSubmit(event) {
     event.preventDefault()
 
-    const validationError = validateForm()
+    const validationError =
+      validateForm()
 
     if (validationError) {
       setError(validationError)
@@ -309,26 +318,42 @@ export default function EditQuiz() {
       const payload = {
         title: form.title.trim(),
 
-        description: form.description.trim(),
+        description:
+          form.description.trim(),
 
-        category: form.category.trim(),
+        category:
+          form.category.trim(),
 
-        difficulty: form.difficulty,
+        difficulty:
+          form.difficulty,
 
         durationMinutes:
           Number(form.durationMinutes),
 
-        questions: questions.map((question) => ({
-          questionText:
-            question.questionText.trim(),
+        questions:
+          form.questions.map(
+            (question) => ({
+              ...(question._id
+                ? {
+                    _id: question._id
+                  }
+                : {}),
 
-          options: question.options.map(
-            (option) => ({
-              text: option.text.trim(),
-              isCorrect: option.isCorrect
+              questionText:
+                question.questionText.trim(),
+
+              options:
+                question.options.map(
+                  (option) =>
+                    String(option).trim()
+                ),
+
+              correctAnswer:
+                Number(
+                  question.correctAnswer
+                )
             })
           )
-        }))
       }
 
       await api.put(
@@ -338,7 +363,10 @@ export default function EditQuiz() {
 
       navigate('/admin')
     } catch (err) {
-      console.error('Update quiz error:', err)
+      console.error(
+        'Update quiz error:',
+        err
+      )
 
       setError(
         err.response?.data?.message ||
@@ -355,423 +383,560 @@ export default function EditQuiz() {
 
   if (loading) {
     return (
-      <div
-        className="container"
-        style={{
-          display: 'flex',
-          justifyContent: 'center',
-          paddingTop: 100
-        }}
-      >
-        <div className="loader" />
-      </div>
+      <main className="page">
+        <div
+          className="container"
+          style={{
+            minHeight: 400,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}
+        >
+          <div
+            style={{
+              textAlign: 'center'
+            }}
+          >
+            <div
+              className="loader"
+              style={{
+                margin: '0 auto 14px'
+              }}
+            />
+
+            <span
+              style={{
+                color: 'var(--muted)',
+                fontFamily:
+                  'var(--font-mono)',
+                fontSize: 12
+              }}
+            >
+              Loading quiz...
+            </span>
+          </div>
+        </div>
+      </main>
     )
   }
 
-  return (
-    <div
-      className="container"
-      style={{
-        maxWidth: 900,
-        paddingTop: 50,
-        paddingBottom: 100
-      }}
-    >
-      {/* Header */}
+  // ==========================================
+  // PAGE
+  // ==========================================
 
+  return (
+    <main className="page">
       <div
+        className="container"
         style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'flex-end',
-          gap: 20,
-          marginBottom: 30
+          maxWidth: 900
         }}
       >
-        <div>
-          <span className="eyebrow">
-            Admin
-          </span>
+        {/* HEADER */}
 
-          <h1
-            style={{
-              fontSize: 36,
-              marginTop: 8,
-              marginBottom: 8
-            }}
-          >
-            Edit Quiz
-          </h1>
-
-          <p
-            style={{
-              color: 'var(--muted)',
-              margin: 0
-            }}
-          >
-            Update quiz information, questions and
-            correct answers.
-          </p>
-        </div>
-
-        <Link
-          to="/admin"
-          className="btn btn-ghost"
-        >
-          Back
-        </Link>
-      </div>
-
-      {/* Error */}
-
-      {error && (
-        <div
-          className="card"
-          style={{
-            borderColor: 'var(--red)',
-            marginBottom: 22,
-            padding: 16
-          }}
-        >
-          <p
-            className="error-text"
-            style={{ margin: 0 }}
-          >
-            {error}
-          </p>
-        </div>
-      )}
-
-      <form onSubmit={handleSubmit}>
-        {/* ==================================
-            BASIC DETAILS
-        =================================== */}
-
-        <div
-          className="card"
-          style={{
-            marginBottom: 22
-          }}
-        >
-          <span className="eyebrow">
-            Quiz information
-          </span>
-
-          <h2
-            style={{
-              fontSize: 24,
-              marginTop: 7,
-              marginBottom: 25
-            }}
-          >
-            Basic Details
-          </h2>
-
-          <div className="field">
-            <label htmlFor="title">
-              Quiz Title
-            </label>
-
-            <input
-              id="title"
-              name="title"
-              className="input"
-              value={form.title}
-              onChange={handleChange}
-            />
-          </div>
-
-          <div className="field">
-            <label htmlFor="description">
-              Description
-            </label>
-
-            <textarea
-              id="description"
-              name="description"
-              className="input"
-              rows="4"
-              value={form.description}
-              onChange={handleChange}
-              style={{
-                resize: 'vertical'
-              }}
-            />
-          </div>
-
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns:
-                'repeat(3, 1fr)',
-              gap: 15
-            }}
-          >
-            <div className="field">
-              <label htmlFor="category">
-                Category
-              </label>
-
-              <input
-                id="category"
-                name="category"
-                className="input"
-                value={form.category}
-                onChange={handleChange}
-              />
-            </div>
-
-            <div className="field">
-              <label htmlFor="difficulty">
-                Difficulty
-              </label>
-
-              <select
-                id="difficulty"
-                name="difficulty"
-                className="input"
-                value={form.difficulty}
-                onChange={handleChange}
-              >
-                <option value="Easy">
-                  Easy
-                </option>
-
-                <option value="Medium">
-                  Medium
-                </option>
-
-                <option value="Hard">
-                  Hard
-                </option>
-              </select>
-            </div>
-
-            <div className="field">
-              <label htmlFor="durationMinutes">
-                Duration
-              </label>
-
-              <input
-                id="durationMinutes"
-                name="durationMinutes"
-                type="number"
-                min="1"
-                max="120"
-                className="input"
-                value={form.durationMinutes}
-                onChange={handleChange}
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* ==================================
-            QUESTIONS
-        =================================== */}
-
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            marginTop: 40,
-            marginBottom: 18
-          }}
-        >
+        <div className="edit-quiz-header">
           <div>
             <span className="eyebrow">
-              Questions
+              Admin panel
             </span>
 
-            <h2
+            <h1
               style={{
-                fontSize: 27,
-                marginTop: 6
+                marginTop: 7,
+                marginBottom: 8,
+                fontSize:
+                  'clamp(28px, 8vw, 40px)'
               }}
             >
-              Quiz Questions
-            </h2>
+              Edit Quiz
+            </h1>
+
+            <p
+              style={{
+                margin: 0,
+                maxWidth: 600,
+                color: 'var(--muted)',
+                lineHeight: 1.6
+              }}
+            >
+              Update quiz information,
+              questions and correct answers.
+            </p>
           </div>
 
-          <span className="pill">
-            {questions.length}{' '}
-            {questions.length === 1
-              ? 'Question'
-              : 'Questions'}
-          </span>
-        </div>
-
-        {questions.map(
-          (question, questionIndex) => (
-            <div
-              className="card"
-              key={questionIndex}
-              style={{
-                marginBottom: 18
-              }}
-            >
-              {/* Question Header */}
-
-              <div
-                style={{
-                  display: 'flex',
-                  justifyContent:
-                    'space-between',
-                  alignItems: 'center',
-                  gap: 15,
-                  marginBottom: 20
-                }}
-              >
-                <h3
-                  style={{
-                    fontSize: 20
-                  }}
-                >
-                  Question {questionIndex + 1}
-                </h3>
-
-                <button
-                  type="button"
-                  className="btn btn-ghost"
-                  onClick={() =>
-                    removeQuestion(questionIndex)
-                  }
-                  style={{
-                    padding: '8px 13px',
-                    color: 'var(--red)'
-                  }}
-                >
-                  Remove
-                </button>
-              </div>
-
-              {/* Question Text */}
-
-              <div className="field">
-                <label>
-                  Question Text
-                </label>
-
-                <input
-                  className="input"
-                  value={question.questionText}
-                  onChange={(event) =>
-                    updateQuestion(
-                      questionIndex,
-                      event.target.value
-                    )
-                  }
-                />
-              </div>
-
-              {/* Options */}
-
-              <label>
-                Options — select the correct answer
-              </label>
-
-              <div
-                style={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: 12,
-                  marginTop: 10
-                }}
-              >
-                {question.options.map(
-                  (option, optionIndex) => (
-                    <div
-                      key={optionIndex}
-                      style={{
-                        display: 'grid',
-                        gridTemplateColumns:
-                          '42px 1fr',
-                        gap: 10,
-                        alignItems: 'center'
-                      }}
-                    >
-                      <input
-                        type="radio"
-                        name={`correct-${questionIndex}`}
-                        checked={option.isCorrect}
-                        onChange={() =>
-                          setCorrectOption(
-                            questionIndex,
-                            optionIndex
-                          )
-                        }
-                        style={{
-                          width: 18,
-                          height: 18,
-                          margin: '0 auto',
-                          accentColor:
-                            'var(--amber)'
-                        }}
-                      />
-
-                      <input
-                        className="input"
-                        value={option.text}
-                        onChange={(event) =>
-                          updateOption(
-                            questionIndex,
-                            optionIndex,
-                            event.target.value
-                          )
-                        }
-                      />
-                    </div>
-                  )
-                )}
-              </div>
-            </div>
-          )
-        )}
-
-        {/* Add Question */}
-
-        <button
-          type="button"
-          className="btn btn-ghost"
-          onClick={addQuestion}
-          style={{
-            width: '100%',
-            marginTop: 5,
-            marginBottom: 30,
-            borderStyle: 'dashed'
-          }}
-        >
-          + Add Another Question
-        </button>
-
-        {/* Actions */}
-
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'flex-end',
-            gap: 12
-          }}
-        >
           <Link
             to="/admin"
             className="btn btn-ghost"
           >
-            Cancel
+            ← Admin Panel
           </Link>
+        </div>
+
+        {/* ERROR */}
+
+        {error && (
+          <div
+            role="alert"
+            style={{
+              marginBottom: 20,
+              padding: '12px 14px',
+              border:
+                '1px solid rgba(232, 85, 63, 0.4)',
+              borderRadius: 10,
+              background:
+                'rgba(232, 85, 63, 0.08)'
+            }}
+          >
+            <p
+              className="error-text"
+              style={{
+                margin: 0
+              }}
+            >
+              {error}
+            </p>
+          </div>
+        )}
+
+        <form
+          onSubmit={handleSubmit}
+          className="edit-quiz-form"
+        >
+          {/* ==================================
+              QUIZ DETAILS
+          =================================== */}
+
+          <section className="card">
+            <span className="eyebrow">
+              Quiz details
+            </span>
+
+            <h2
+              style={{
+                marginTop: 6,
+                marginBottom: 22
+              }}
+            >
+              Basic Information
+            </h2>
+
+            <div className="edit-quiz-fields">
+              {/* TITLE */}
+
+              <div className="form-group edit-quiz-full-field">
+                <label htmlFor="edit-title">
+                  Quiz Title
+                </label>
+
+                <input
+                  id="edit-title"
+                  type="text"
+                  name="title"
+                  value={form.title}
+                  onChange={handleChange}
+                  placeholder="Quiz title"
+                  required
+                />
+              </div>
+
+              {/* DESCRIPTION */}
+
+              <div className="form-group edit-quiz-full-field">
+                <label htmlFor="edit-description">
+                  Description
+                </label>
+
+                <textarea
+                  id="edit-description"
+                  name="description"
+                  value={form.description}
+                  onChange={handleChange}
+                  placeholder="Quiz description..."
+                  rows={4}
+                />
+              </div>
+
+              {/* CATEGORY */}
+
+              <div className="form-group">
+                <label htmlFor="edit-category">
+                  Category
+                </label>
+
+                <input
+                  id="edit-category"
+                  type="text"
+                  name="category"
+                  value={form.category}
+                  onChange={handleChange}
+                  placeholder="Programming"
+                  required
+                />
+              </div>
+
+              {/* DIFFICULTY */}
+
+              <div className="form-group">
+                <label htmlFor="edit-difficulty">
+                  Difficulty
+                </label>
+
+                <select
+                  id="edit-difficulty"
+                  name="difficulty"
+                  value={form.difficulty}
+                  onChange={handleChange}
+                >
+                  <option value="Easy">
+                    Easy
+                  </option>
+
+                  <option value="Medium">
+                    Medium
+                  </option>
+
+                  <option value="Hard">
+                    Hard
+                  </option>
+                </select>
+              </div>
+
+              {/* DURATION */}
+
+              <div className="form-group">
+                <label htmlFor="edit-duration">
+                  Duration (minutes)
+                </label>
+
+                <input
+                  id="edit-duration"
+                  type="number"
+                  name="durationMinutes"
+                  min="1"
+                  value={
+                    form.durationMinutes
+                  }
+                  onChange={handleChange}
+                  required
+                />
+              </div>
+            </div>
+          </section>
+
+          {/* ==================================
+              QUESTIONS HEADER
+          =================================== */}
+
+          <div className="edit-question-header">
+            <div>
+              <span className="eyebrow">
+                Questions
+              </span>
+
+              <h2
+                style={{
+                  marginTop: 5,
+                  marginBottom: 0
+                }}
+              >
+                Edit Questions
+              </h2>
+            </div>
+
+            <span className="pill">
+              {form.questions.length}{' '}
+              {form.questions.length === 1
+                ? 'question'
+                : 'questions'}
+            </span>
+          </div>
+
+          {/* ==================================
+              QUESTIONS
+          =================================== */}
+
+          <div className="edit-question-list">
+            {form.questions.map(
+              (
+                question,
+                questionIndex
+              ) => (
+                <EditQuestionCard
+                  key={
+                    question._id ||
+                    questionIndex
+                  }
+                  question={question}
+                  questionIndex={
+                    questionIndex
+                  }
+                  totalQuestions={
+                    form.questions.length
+                  }
+                  onQuestionChange={
+                    handleQuestionChange
+                  }
+                  onOptionChange={
+                    handleOptionChange
+                  }
+                  onCorrectAnswer={
+                    handleCorrectAnswer
+                  }
+                  onRemove={
+                    removeQuestion
+                  }
+                />
+              )
+            )}
+          </div>
+
+          {/* ADD QUESTION */}
 
           <button
-            type="submit"
-            className="btn btn-primary"
-            disabled={saving}
+            type="button"
+            className="btn btn-ghost edit-add-question"
+            onClick={addQuestion}
           >
-            {saving
-              ? 'Saving...'
-              : 'Save Changes'}
+            + Add Another Question
           </button>
-        </div>
-      </form>
-    </div>
+
+          {/* ==================================
+              ACTIONS
+          =================================== */}
+
+          <div className="edit-quiz-actions">
+            <Link
+              to="/admin"
+              className="btn btn-ghost"
+            >
+              Cancel
+            </Link>
+
+            <button
+              type="submit"
+              className="btn btn-primary"
+              disabled={saving}
+            >
+              {saving
+                ? 'Saving...'
+                : 'Save Changes'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </main>
   )
+}
+
+// ==========================================
+// QUESTION CARD
+// ==========================================
+
+function EditQuestionCard({
+  question,
+  questionIndex,
+  totalQuestions,
+  onQuestionChange,
+  onOptionChange,
+  onCorrectAnswer,
+  onRemove
+}) {
+  return (
+    <section className="card edit-question-card">
+      <div className="edit-question-card-header">
+        <div>
+          <span className="eyebrow">
+            Question
+          </span>
+
+          <h3
+            style={{
+              marginTop: 5,
+              marginBottom: 0
+            }}
+          >
+            Question {questionIndex + 1}
+          </h3>
+        </div>
+
+        {totalQuestions > 1 && (
+          <button
+            type="button"
+            className="btn btn-ghost edit-question-remove"
+            onClick={() =>
+              onRemove(questionIndex)
+            }
+          >
+            Remove
+          </button>
+        )}
+      </div>
+
+      {/* QUESTION */}
+
+      <div className="form-group">
+        <label
+          htmlFor={`edit-question-${questionIndex}`}
+        >
+          Question Text
+        </label>
+
+        <textarea
+          id={`edit-question-${questionIndex}`}
+          value={question.questionText}
+          onChange={(event) =>
+            onQuestionChange(
+              questionIndex,
+              event.target.value
+            )
+          }
+          placeholder="Enter question..."
+          rows={3}
+          required
+        />
+      </div>
+
+      {/* OPTIONS */}
+
+      <div
+        style={{
+          marginTop: 22
+        }}
+      >
+        <span className="eyebrow">
+          Answer options
+        </span>
+
+        <p
+          style={{
+            margin: '5px 0 13px',
+            color: 'var(--muted)',
+            fontSize: 12
+          }}
+        >
+          Select the correct answer.
+        </p>
+
+        <div className="edit-options-grid">
+          {question.options.map(
+            (option, optionIndex) => {
+              const isCorrect =
+                question.correctAnswer ===
+                optionIndex
+
+              return (
+                <label
+                  key={optionIndex}
+                  className={`edit-option ${
+                    isCorrect
+                      ? 'edit-option-correct'
+                      : ''
+                  }`}
+                >
+                  <div className="edit-option-radio">
+                    <input
+                      type="radio"
+                      name={`edit-correct-${questionIndex}`}
+                      checked={isCorrect}
+                      onChange={() =>
+                        onCorrectAnswer(
+                          questionIndex,
+                          optionIndex
+                        )
+                      }
+                    />
+
+                    <span>
+                      {String.fromCharCode(
+                        65 + optionIndex
+                      )}
+                    </span>
+                  </div>
+
+                  <input
+                    type="text"
+                    value={option}
+                    onChange={(event) =>
+                      onOptionChange(
+                        questionIndex,
+                        optionIndex,
+                        event.target.value
+                      )
+                    }
+                    placeholder={`Option ${
+                      optionIndex + 1
+                    }`}
+                    required
+                  />
+                </label>
+              )
+            }
+          )}
+        </div>
+      </div>
+    </section>
+  )
+}
+
+// ==========================================
+// NORMALISE OPTIONS
+// ==========================================
+
+function normaliseOptions(options) {
+  if (!Array.isArray(options)) {
+    return ['', '', '', '']
+  }
+
+  const values = options.map(
+    (option) => {
+      if (typeof option === 'string') {
+        return option
+      }
+
+      return (
+        option?.text ||
+        option?.optionText ||
+        ''
+      )
+    }
+  )
+
+  while (values.length < 4) {
+    values.push('')
+  }
+
+  return values.slice(0, 4)
+}
+
+// ==========================================
+// CORRECT ANSWER
+// ==========================================
+
+function getCorrectAnswer(question) {
+  if (
+    Number.isInteger(
+      question.correctAnswer
+    )
+  ) {
+    return question.correctAnswer
+  }
+
+  if (
+    Number.isInteger(
+      question.correctOption
+    )
+  ) {
+    return question.correctOption
+  }
+
+  if (
+    Number.isInteger(
+      question.correctOptionIndex
+    )
+  ) {
+    return question.correctOptionIndex
+  }
+
+  return 0
 }

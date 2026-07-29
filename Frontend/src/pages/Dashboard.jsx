@@ -1,95 +1,72 @@
 import { useEffect, useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
+
 import api from '../api/axios'
-import QuizCard from '../components/QuizCard'
 import { useAuth } from '../context/AuthContext'
 
 export default function Dashboard() {
   const { user } = useAuth()
 
   const [quizzes, setQuizzes] = useState([])
-  const [results, setResults] = useState([])
-
-  const [stats, setStats] = useState({
-    totalAttempts: 0,
-    bestScore: 0,
-    averageScore: 0,
-    totalCorrect: 0,
-    totalQuestions: 0
-  })
-
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
-  // Filters
   const [search, setSearch] = useState('')
   const [category, setCategory] = useState('All')
   const [difficulty, setDifficulty] = useState('All')
 
   // ==========================================
-  // Load Dashboard
+  // LOAD QUIZZES
   // ==========================================
 
   useEffect(() => {
-    async function fetchDashboard() {
+    async function fetchQuizzes() {
       try {
         setLoading(true)
         setError('')
 
-        const [quizResponse, resultResponse] =
-          await Promise.all([
-            api.get('/quizzes'),
-            api.get('/results/me')
-          ])
+        const { data } = await api.get('/quizzes')
 
         setQuizzes(
-          quizResponse.data.quizzes || []
-        )
-
-        setResults(
-          resultResponse.data.results || []
-        )
-
-        setStats(
-          resultResponse.data.stats || {
-            totalAttempts: 0,
-            bestScore: 0,
-            averageScore: 0,
-            totalCorrect: 0,
-            totalQuestions: 0
-          }
+          Array.isArray(data)
+            ? data
+            : data.quizzes || []
         )
       } catch (err) {
-        console.error('Dashboard error:', err)
+        console.error(
+          'Dashboard quiz load error:',
+          err
+        )
 
         setError(
           err.response?.data?.message ||
-            'Could not load dashboard.'
+            'Could not load quizzes.'
         )
       } finally {
         setLoading(false)
       }
     }
 
-    fetchDashboard()
+    fetchQuizzes()
   }, [])
 
   // ==========================================
-  // Categories
+  // CATEGORIES
   // ==========================================
 
   const categories = useMemo(() => {
-    const values = quizzes.map(
-      (quiz) => quiz.category || 'General'
-    )
-
     return [
       'All',
-      ...new Set(values)
+      ...new Set(
+        quizzes
+          .map((quiz) => quiz.category)
+          .filter(Boolean)
+      )
     ]
   }, [quizzes])
 
   // ==========================================
-  // Filter Quizzes
+  // FILTER QUIZZES
   // ==========================================
 
   const filteredQuizzes = useMemo(() => {
@@ -97,31 +74,30 @@ export default function Dashboard() {
       search.trim().toLowerCase()
 
     return quizzes.filter((quiz) => {
+      const quizTitle =
+        quiz.title?.toLowerCase() || ''
+
       const quizCategory =
-        quiz.category || 'General'
+        quiz.category?.toLowerCase() ||
+        'general'
 
       const quizDifficulty =
-        quiz.difficulty || 'Easy'
+        quiz.difficulty?.toLowerCase() ||
+        'easy'
 
       const matchesSearch =
         !searchValue ||
-        quiz.title
-          ?.toLowerCase()
-          .includes(searchValue) ||
-        quiz.description
-          ?.toLowerCase()
-          .includes(searchValue) ||
-        quizCategory
-          .toLowerCase()
-          .includes(searchValue)
+        quizTitle.includes(searchValue) ||
+        quizCategory.includes(searchValue)
 
       const matchesCategory =
         category === 'All' ||
-        quizCategory === category
+        quizCategory === category.toLowerCase()
 
       const matchesDifficulty =
         difficulty === 'All' ||
-        quizDifficulty === difficulty
+        quizDifficulty ===
+          difficulty.toLowerCase()
 
       return (
         matchesSearch &&
@@ -137,572 +113,525 @@ export default function Dashboard() {
   ])
 
   // ==========================================
-  // Reset Filters
+  // STATS
   // ==========================================
 
-  function resetFilters() {
-    setSearch('')
-    setCategory('All')
-    setDifficulty('All')
-  }
-
-  const hasActiveFilters =
-    search.trim() !== '' ||
-    category !== 'All' ||
-    difficulty !== 'All'
-
-  // ==========================================
-  // Time Formatter
-  // ==========================================
-
-  function formatTime(seconds) {
-    if (
-      seconds === null ||
-      seconds === undefined
-    ) {
-      return '—'
-    }
-
-    const minutes = Math.floor(seconds / 60)
-    const remainingSeconds =
-      seconds % 60
-
-    if (minutes === 0) {
-      return `${remainingSeconds}s`
-    }
-
-    return `${minutes}m ${remainingSeconds}s`
-  }
-
-  // ==========================================
-  // Date Formatter
-  // ==========================================
-
-  function formatDate(date) {
-    if (!date) return ''
-
-    return new Date(date).toLocaleDateString(
-      'en-IN',
-      {
-        day: '2-digit',
-        month: 'short',
-        year: 'numeric'
-      }
+  const totalQuestions = useMemo(() => {
+    return quizzes.reduce(
+      (total, quiz) =>
+        total +
+        (quiz.questions?.length || 0),
+      0
     )
-  }
+  }, [quizzes])
 
   // ==========================================
-  // Loading
+  // LOADING
   // ==========================================
 
   if (loading) {
     return (
-      <div
-        className="container"
-        style={{
-          display: 'flex',
-          justifyContent: 'center',
-          paddingTop: 100
-        }}
-      >
-        <div className="loader" />
-      </div>
+      <main className="page">
+        <div
+          className="container"
+          style={{
+            minHeight: 350,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}
+        >
+          <div
+            style={{
+              textAlign: 'center'
+            }}
+          >
+            <div
+              className="loader"
+              style={{
+                margin: '0 auto 14px'
+              }}
+            />
+
+            <span
+              style={{
+                color: 'var(--muted)',
+                fontFamily: 'var(--font-mono)',
+                fontSize: 12
+              }}
+            >
+              Loading quizzes...
+            </span>
+          </div>
+        </div>
+      </main>
     )
   }
 
   return (
-    <div
-      className="container"
-      style={{
-        paddingTop: 55,
-        paddingBottom: 100
-      }}
-    >
-      {/* =====================================
-          WELCOME
-      ====================================== */}
+    <main className="page">
+      <div className="container">
 
-      <section
-        style={{
-          marginBottom: 35
-        }}
-      >
-        <span className="eyebrow">
-          Hey {user?.name?.split(' ')[0] || 'Player'}
-        </span>
+        {/* ==================================
+            PAGE HEADER
+        =================================== */}
 
-        <h1
-          style={{
-            fontSize: 38,
-            marginTop: 10,
-            marginBottom: 10
-          }}
-        >
-          Ready for another challenge?
-        </h1>
-
-        <p
-          style={{
-            color: 'var(--muted)',
-            margin: 0,
-            lineHeight: 1.6
-          }}
-        >
-          Pick a quiz, test your knowledge and improve
-          your score.
-        </p>
-      </section>
-
-      {/* Error */}
-
-      {error && (
-        <p
-          className="error-text"
-          style={{
-            marginBottom: 25
-          }}
-        >
-          {error}
-        </p>
-      )}
-
-      {/* =====================================
-          STATS
-      ====================================== */}
-
-      <section
-        style={{
-          display: 'grid',
-          gridTemplateColumns:
-            'repeat(auto-fit, minmax(180px, 1fr))',
-          gap: 16,
-          marginBottom: 50
-        }}
-      >
-        <StatCard
-          label="Available Quizzes"
-          value={quizzes.length}
-        />
-
-        <StatCard
-          label="Total Attempts"
-          value={stats.totalAttempts}
-        />
-
-        <StatCard
-          label="Best Score"
-          value={`${stats.bestScore}%`}
-          color="var(--teal)"
-        />
-
-        <StatCard
-          label="Average Score"
-          value={`${stats.averageScore}%`}
-          color="var(--amber)"
-        />
-      </section>
-
-      {/* =====================================
-          QUIZ LIBRARY
-      ====================================== */}
-
-      <section>
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'end',
-            gap: 20,
-            marginBottom: 22
-          }}
-        >
-          <div>
+        <div className="page-header">
+          <div className="page-header-content">
             <span className="eyebrow">
-              Quiz library
+              Quiz dashboard
             </span>
 
-            <h2
+            <h1
               style={{
-                fontSize: 30,
-                marginTop: 7
-              }}
-            >
-              Pick a quiz
-            </h2>
-          </div>
-
-          <span className="pill">
-            {filteredQuizzes.length} of {quizzes.length}
-          </span>
-        </div>
-
-        {/* ===================================
-            SEARCH + FILTERS
-        ==================================== */}
-
-        <div
-          className="card"
-          style={{
-            padding: 18,
-            marginBottom: 25
-          }}
-        >
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns:
-                'minmax(220px, 2fr) minmax(150px, 1fr) minmax(150px, 1fr)',
-              gap: 12
-            }}
-          >
-            {/* Search */}
-
-            <input
-              className="input"
-              type="search"
-              placeholder="Search quizzes..."
-              value={search}
-              onChange={(event) =>
-                setSearch(event.target.value)
-              }
-            />
-
-            {/* Category */}
-
-            <select
-              className="input"
-              value={category}
-              onChange={(event) =>
-                setCategory(event.target.value)
-              }
-            >
-              {categories.map((item) => (
-                <option
-                  key={item}
-                  value={item}
-                >
-                  {item === 'All'
-                    ? 'All Categories'
-                    : item}
-                </option>
-              ))}
-            </select>
-
-            {/* Difficulty */}
-
-            <select
-              className="input"
-              value={difficulty}
-              onChange={(event) =>
-                setDifficulty(event.target.value)
-              }
-            >
-              <option value="All">
-                All Difficulties
-              </option>
-
-              <option value="Easy">
-                Easy
-              </option>
-
-              <option value="Medium">
-                Medium
-              </option>
-
-              <option value="Hard">
-                Hard
-              </option>
-            </select>
-          </div>
-
-          {hasActiveFilters && (
-            <div
-              style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                gap: 15,
-                marginTop: 15
-              }}
-            >
-              <span
-                style={{
-                  color: 'var(--muted)',
-                  fontSize: 13
-                }}
-              >
-                Found {filteredQuizzes.length}{' '}
-                {filteredQuizzes.length === 1
-                  ? 'quiz'
-                  : 'quizzes'}
-              </span>
-
-              <button
-                type="button"
-                className="btn btn-ghost"
-                style={{
-                  padding: '8px 14px',
-                  fontSize: 13
-                }}
-                onClick={resetFilters}
-              >
-                Clear filters
-              </button>
-            </div>
-          )}
-        </div>
-
-        {/* ===================================
-            QUIZ CARDS
-        ==================================== */}
-
-        {filteredQuizzes.length === 0 ? (
-          <div
-            className="card"
-            style={{
-              textAlign: 'center',
-              padding: 45
-            }}
-          >
-            <h3
-              style={{
+                marginTop: 8,
                 marginBottom: 10
               }}
             >
-              No quizzes found
-            </h3>
+              Welcome
+              {user?.name
+                ? `, ${user.name}`
+                : ''}
+            </h1>
 
             <p
               style={{
-                color: 'var(--muted)',
-                marginTop: 0,
-                marginBottom: 22
+                margin: 0,
+                maxWidth: 650,
+                color: 'var(--muted)'
               }}
             >
-              Try another search, category or
-              difficulty.
+              Choose a quiz, test your
+              knowledge and improve your score.
             </p>
+          </div>
 
-            {hasActiveFilters && (
-              <button
-                type="button"
+          <div className="page-header-actions">
+            <Link
+              to="/history"
+              className="btn btn-ghost"
+            >
+              Quiz History
+            </Link>
+
+            {user?.role === 'admin' && (
+              <Link
+                to="/admin"
                 className="btn btn-primary"
-                onClick={resetFilters}
               >
-                Clear filters
-              </button>
+                Admin Panel
+              </Link>
             )}
           </div>
-        ) : (
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns:
-                'repeat(auto-fill, minmax(280px, 1fr))',
-              gap: 20
-            }}
-          >
-            {filteredQuizzes.map((quiz) => (
-              <QuizCard
-                key={quiz._id}
-                quiz={quiz}
-              />
-            ))}
-          </div>
-        )}
-      </section>
-
-      {/* =====================================
-          RECENT ATTEMPTS
-      ====================================== */}
-
-      <section
-        style={{
-          marginTop: 55
-        }}
-      >
-        <div
-          style={{
-            marginBottom: 22
-          }}
-        >
-          <span className="eyebrow">
-            Your progress
-          </span>
-
-          <h2
-            style={{
-              fontSize: 30,
-              marginTop: 7
-            }}
-          >
-            Recent attempts
-          </h2>
         </div>
 
-        {results.length === 0 ? (
+        {/* ==================================
+            ERROR
+        =================================== */}
+
+        {error && (
           <div
-            className="card"
+            role="alert"
             style={{
-              textAlign: 'center',
-              padding: 40
+              padding: '12px 14px',
+              marginBottom: 24,
+              border:
+                '1px solid rgba(232, 85, 63, 0.4)',
+              borderRadius: 10,
+              background:
+                'rgba(232, 85, 63, 0.08)'
             }}
           >
-            <h3
-              style={{
-                marginBottom: 8
-              }}
-            >
-              No attempts yet
-            </h3>
-
             <p
+              className="error-text"
               style={{
-                color: 'var(--muted)',
                 margin: 0
               }}
             >
-              Complete your first quiz and your results
-              will appear here.
+              {error}
             </p>
           </div>
-        ) : (
+        )}
+
+        {/* ==================================
+            STATS
+        =================================== */}
+
+        <div
+          className="stats-grid"
+          style={{
+            marginBottom: 35
+          }}
+        >
+          <StatCard
+            label="Available Quizzes"
+            value={quizzes.length}
+          />
+
+          <StatCard
+            label="Questions"
+            value={totalQuestions}
+          />
+
+          <StatCard
+            label="Categories"
+            value={Math.max(
+              categories.length - 1,
+              0
+            )}
+          />
+
+          <StatCard
+            label="Your Role"
+            value={
+              user?.role?.toUpperCase() ||
+              'USER'
+            }
+            color={
+              user?.role === 'admin'
+                ? 'var(--amber)'
+                : 'var(--teal)'
+            }
+          />
+        </div>
+
+        {/* ==================================
+            QUIZ SECTION HEADER
+        =================================== */}
+
+        <section>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'flex-end',
+              justifyContent:
+                'space-between',
+              gap: 16,
+              flexWrap: 'wrap',
+              marginBottom: 20
+            }}
+          >
+            <div>
+              <span className="eyebrow">
+                Quiz Library
+              </span>
+
+              <h2
+                style={{
+                  marginTop: 6
+                }}
+              >
+                Choose your challenge
+              </h2>
+            </div>
+
+            <span className="pill">
+              {filteredQuizzes.length}{' '}
+              {filteredQuizzes.length === 1
+                ? 'quiz'
+                : 'quizzes'}
+            </span>
+          </div>
+
+          {/* ==================================
+              FILTERS
+          =================================== */}
+
           <div
             className="card"
             style={{
-              padding: 0,
-              overflow: 'hidden'
+              marginBottom: 24
             }}
           >
-            {results
-              .slice(0, 5)
-              .map((result, index) => (
-                <div
-                  key={result._id}
-                  style={{
-                    display: 'grid',
-                    gridTemplateColumns:
-                      'minmax(180px, 1fr) 90px 90px 120px',
-                    gap: 15,
-                    alignItems: 'center',
-                    padding: '18px 22px',
+            <div className="filters-grid">
 
-                    borderBottom:
-                      index !==
-                      Math.min(results.length, 5) - 1
-                        ? '1px solid var(--border)'
-                        : 'none'
-                  }}
+              {/* SEARCH */}
+
+              <div>
+                <label htmlFor="quiz-search">
+                  Search
+                </label>
+
+                <input
+                  id="quiz-search"
+                  type="search"
+                  className="input"
+                  placeholder="Search quizzes..."
+                  value={search}
+                  onChange={(event) =>
+                    setSearch(
+                      event.target.value
+                    )
+                  }
+                />
+              </div>
+
+              {/* CATEGORY */}
+
+              <div>
+                <label htmlFor="quiz-category">
+                  Category
+                </label>
+
+                <select
+                  id="quiz-category"
+                  className="input"
+                  value={category}
+                  onChange={(event) =>
+                    setCategory(
+                      event.target.value
+                    )
+                  }
                 >
-                  {/* Quiz */}
+                  {categories.map(
+                    (item) => (
+                      <option
+                        key={item}
+                        value={item}
+                      >
+                        {item}
+                      </option>
+                    )
+                  )}
+                </select>
+              </div>
 
-                  <div>
-                    <div
-                      style={{
-                        fontFamily:
-                          'var(--font-display)',
-                        fontWeight: 600,
-                        marginBottom: 5
-                      }}
-                    >
-                      {result.quiz?.title ||
-                        'Deleted Quiz'}
-                    </div>
+              {/* DIFFICULTY */}
 
-                    <div
-                      style={{
-                        color: 'var(--muted)',
-                        fontSize: 12
-                      }}
-                    >
-                      {formatDate(
-                        result.createdAt
-                      )}
-                    </div>
-                  </div>
+              <div>
+                <label htmlFor="quiz-difficulty">
+                  Difficulty
+                </label>
 
-                  {/* Score */}
+                <select
+                  id="quiz-difficulty"
+                  className="input"
+                  value={difficulty}
+                  onChange={(event) =>
+                    setDifficulty(
+                      event.target.value
+                    )
+                  }
+                >
+                  <option value="All">
+                    All
+                  </option>
 
-                  <div>
-                    <div
-                      style={{
-                        fontFamily:
-                          'var(--font-mono)',
-                        fontWeight: 700,
-                        color:
-                          result.score >= 60
-                            ? 'var(--teal)'
-                            : 'var(--red)'
-                      }}
-                    >
-                      {result.score}%
-                    </div>
+                  <option value="Easy">
+                    Easy
+                  </option>
 
-                    <div
-                      className="eyebrow"
-                      style={{
-                        color: 'var(--muted)',
-                        fontSize: 9
-                      }}
-                    >
-                      Score
-                    </div>
-                  </div>
+                  <option value="Medium">
+                    Medium
+                  </option>
 
-                  {/* Correct */}
-
-                  <div>
-                    <div
-                      style={{
-                        fontFamily:
-                          'var(--font-mono)'
-                      }}
-                    >
-                      {result.correctCount}/
-                      {result.total}
-                    </div>
-
-                    <div
-                      className="eyebrow"
-                      style={{
-                        color: 'var(--muted)',
-                        fontSize: 9
-                      }}
-                    >
-                      Correct
-                    </div>
-                  </div>
-
-                  {/* Time */}
-
-                  <div>
-                    <div
-                      style={{
-                        fontFamily:
-                          'var(--font-mono)'
-                      }}
-                    >
-                      {formatTime(
-                        result.timeTakenSeconds
-                      )}
-                    </div>
-
-                    <div
-                      className="eyebrow"
-                      style={{
-                        color: 'var(--muted)',
-                        fontSize: 9
-                      }}
-                    >
-                      Time
-                    </div>
-                  </div>
-                </div>
-              ))}
+                  <option value="Hard">
+                    Hard
+                  </option>
+                </select>
+              </div>
+            </div>
           </div>
+
+          {/* ==================================
+              QUIZZES
+          =================================== */}
+
+          {filteredQuizzes.length === 0 ? (
+            <div
+              className="card"
+              style={{
+                paddingBlock: 45,
+                textAlign: 'center'
+              }}
+            >
+              <div
+                style={{
+                  width: 50,
+                  height: 50,
+                  margin: '0 auto 16px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  borderRadius: 12,
+                  background:
+                    'rgba(245, 166, 35, 0.08)',
+                  color: 'var(--amber)',
+                  fontFamily:
+                    'var(--font-display)',
+                  fontWeight: 700,
+                  fontSize: 20
+                }}
+              >
+                ?
+              </div>
+
+              <h3
+                style={{
+                  marginBottom: 8
+                }}
+              >
+                No quizzes found
+              </h3>
+
+              <p
+                style={{
+                  maxWidth: 450,
+                  margin: '0 auto',
+                  color: 'var(--muted)'
+                }}
+              >
+                Try changing the search,
+                category or difficulty filter.
+              </p>
+            </div>
+          ) : (
+            <div className="quiz-grid">
+              {filteredQuizzes.map(
+                (quiz) => (
+                  <QuizCard
+                    key={quiz._id}
+                    quiz={quiz}
+                  />
+                )
+              )}
+            </div>
+          )}
+        </section>
+      </div>
+    </main>
+  )
+}
+
+// ==========================================
+// QUIZ CARD
+// ==========================================
+
+function QuizCard({ quiz }) {
+  const difficulty =
+    quiz.difficulty || 'Easy'
+
+  const difficultyColor =
+    difficulty.toLowerCase() === 'hard'
+      ? 'var(--red)'
+      : difficulty.toLowerCase() ===
+          'medium'
+        ? 'var(--amber)'
+        : 'var(--teal)'
+
+  const questionCount =
+    quiz.questions?.length || 0
+
+  const duration =
+    quiz.durationMinutes || 5
+
+  return (
+    <article
+      className="card quiz-card"
+      style={{
+        display: 'flex',
+        flexDirection: 'column'
+      }}
+    >
+      {/* TOP */}
+
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 10,
+          flexWrap: 'wrap',
+          marginBottom: 18
+        }}
+      >
+        <span className="eyebrow">
+          {quiz.category || 'General'}
+        </span>
+
+        <span
+          className="pill"
+          style={{
+            color: difficultyColor,
+            borderColor: difficultyColor
+          }}
+        >
+          {difficulty}
+        </span>
+      </div>
+
+      {/* CONTENT */}
+
+      <div
+        style={{
+          flex: 1
+        }}
+      >
+        <h3
+          style={{
+            marginBottom: 10
+          }}
+        >
+          {quiz.title || 'Untitled Quiz'}
+        </h3>
+
+        {quiz.description && (
+          <p
+            style={{
+              margin: 0,
+              color: 'var(--muted)',
+              fontSize: 14
+            }}
+          >
+            {quiz.description}
+          </p>
         )}
-      </section>
-    </div>
+      </div>
+
+      {/* META */}
+
+      <div
+        style={{
+          display: 'flex',
+          gap: 12,
+          flexWrap: 'wrap',
+          marginTop: 22,
+          paddingTop: 18,
+          borderTop:
+            '1px solid var(--border)',
+          color: 'var(--muted)',
+          fontFamily:
+            'var(--font-mono)',
+          fontSize: 11
+        }}
+      >
+        <span>
+          {questionCount}{' '}
+          {questionCount === 1
+            ? 'question'
+            : 'questions'}
+        </span>
+
+        <span>•</span>
+
+        <span>
+          {duration} min
+        </span>
+      </div>
+
+      {/* ACTION */}
+
+      <Link
+        to={`/quiz/${quiz._id}`}
+        className="btn btn-primary"
+        style={{
+          width: '100%',
+          marginTop: 18
+        }}
+      >
+        Start Quiz
+      </Link>
+    </article>
   )
 }
 
@@ -716,12 +645,7 @@ function StatCard({
   color = 'var(--paper)'
 }) {
   return (
-    <div
-      className="card"
-      style={{
-        padding: 20
-      }}
-    >
+    <div className="card stat-card">
       <span
         className="eyebrow"
         style={{
@@ -734,11 +658,14 @@ function StatCard({
 
       <div
         style={{
-          fontFamily: 'var(--font-display)',
-          fontSize: 32,
-          fontWeight: 700,
+          marginTop: 9,
           color,
-          marginTop: 10
+          fontFamily:
+            'var(--font-display)',
+          fontSize:
+            'clamp(24px, 7vw, 30px)',
+          fontWeight: 700,
+          overflowWrap: 'anywhere'
         }}
       >
         {value}

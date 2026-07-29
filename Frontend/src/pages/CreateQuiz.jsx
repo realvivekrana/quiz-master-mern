@@ -1,18 +1,13 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+
 import api from '../api/axios'
 
-function createEmptyQuestion() {
-  return {
-    questionText: '',
-    options: [
-      { text: '', isCorrect: true },
-      { text: '', isCorrect: false },
-      { text: '', isCorrect: false },
-      { text: '', isCorrect: false }
-    ]
-  }
-}
+const createEmptyQuestion = () => ({
+  questionText: '',
+  options: ['', '', '', ''],
+  correctAnswer: 0
+})
 
 export default function CreateQuiz() {
   const navigate = useNavigate()
@@ -22,106 +17,119 @@ export default function CreateQuiz() {
     description: '',
     category: '',
     difficulty: 'Easy',
-    durationMinutes: 5
+    durationMinutes: 5,
+    questions: [createEmptyQuestion()]
   })
 
-  const [questions, setQuestions] = useState([
-    createEmptyQuestion()
-  ])
-
-  const [saving, setSaving] = useState(false)
+  const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
   // ==========================================
-  // BASIC FIELDS
+  // QUIZ FIELD CHANGE
   // ==========================================
 
   function handleChange(event) {
     const { name, value } = event.target
 
-    setForm((prev) => ({
-      ...prev,
-      [name]: value
+    setForm((current) => ({
+      ...current,
+      [name]:
+        name === 'durationMinutes'
+          ? Number(value)
+          : value
     }))
   }
 
   // ==========================================
-  // QUESTION TEXT
+  // QUESTION CHANGE
   // ==========================================
 
-  function updateQuestion(questionIndex, value) {
-    setQuestions((prev) =>
-      prev.map((question, index) =>
-        index === questionIndex
-          ? {
-              ...question,
-              questionText: value
-            }
-          : question
-      )
-    )
+  function handleQuestionChange(
+    questionIndex,
+    value
+  ) {
+    setForm((current) => {
+      const questions =
+        current.questions.map(
+          (question, index) =>
+            index === questionIndex
+              ? {
+                  ...question,
+                  questionText: value
+                }
+              : question
+        )
+
+      return {
+        ...current,
+        questions
+      }
+    })
   }
 
   // ==========================================
-  // OPTION TEXT
+  // OPTION CHANGE
   // ==========================================
 
-  function updateOption(
+  function handleOptionChange(
     questionIndex,
     optionIndex,
     value
   ) {
-    setQuestions((prev) =>
-      prev.map((question, qIndex) => {
-        if (qIndex !== questionIndex) {
-          return question
-        }
+    setForm((current) => {
+      const questions =
+        current.questions.map(
+          (question, index) => {
+            if (index !== questionIndex) {
+              return question
+            }
 
-        return {
-          ...question,
+            const options =
+              question.options.map(
+                (option, currentOptionIndex) =>
+                  currentOptionIndex ===
+                  optionIndex
+                    ? value
+                    : option
+              )
 
-          options: question.options.map(
-            (option, oIndex) =>
-              oIndex === optionIndex
-                ? {
-                    ...option,
-                    text: value
-                  }
-                : option
-          )
-        }
-      })
-    )
+            return {
+              ...question,
+              options
+            }
+          }
+        )
+
+      return {
+        ...current,
+        questions
+      }
+    })
   }
 
   // ==========================================
-  // CORRECT OPTION
-  // Exactly one correct answer
+  // CORRECT ANSWER
   // ==========================================
 
-  function setCorrectOption(
+  function handleCorrectAnswer(
     questionIndex,
     optionIndex
   ) {
-    setQuestions((prev) =>
-      prev.map((question, qIndex) => {
-        if (qIndex !== questionIndex) {
-          return question
-        }
+    setForm((current) => ({
+      ...current,
 
-        return {
-          ...question,
-
-          options: question.options.map(
-            (option, oIndex) => ({
-              ...option,
-              isCorrect:
-                oIndex === optionIndex
-            })
-          )
-        }
-      })
-    )
+      questions:
+        current.questions.map(
+          (question, index) =>
+            index === questionIndex
+              ? {
+                  ...question,
+                  correctAnswer:
+                    optionIndex
+                }
+              : question
+        )
+    }))
   }
 
   // ==========================================
@@ -129,31 +137,34 @@ export default function CreateQuiz() {
   // ==========================================
 
   function addQuestion() {
-    setQuestions((prev) => [
-      ...prev,
-      createEmptyQuestion()
-    ])
+    setForm((current) => ({
+      ...current,
+
+      questions: [
+        ...current.questions,
+        createEmptyQuestion()
+      ]
+    }))
   }
 
   // ==========================================
   // REMOVE QUESTION
   // ==========================================
 
-  function removeQuestion(questionIndex) {
-    if (questions.length === 1) {
-      setError(
-        'Quiz must contain at least one question.'
-      )
+  function removeQuestion(indexToRemove) {
+    if (form.questions.length === 1) {
       return
     }
 
-    setError('')
+    setForm((current) => ({
+      ...current,
 
-    setQuestions((prev) =>
-      prev.filter(
-        (_, index) => index !== questionIndex
-      )
-    )
+      questions:
+        current.questions.filter(
+          (_, index) =>
+            index !== indexToRemove
+        )
+    }))
   }
 
   // ==========================================
@@ -166,77 +177,52 @@ export default function CreateQuiz() {
     }
 
     if (!form.category.trim()) {
-      return 'Category is required.'
+      return 'Quiz category is required.'
     }
-
-    const duration =
-      Number(form.durationMinutes)
 
     if (
-      !Number.isInteger(duration) ||
-      duration < 1 ||
-      duration > 120
+      !form.durationMinutes ||
+      form.durationMinutes < 1
     ) {
-      return 'Duration must be between 1 and 120 minutes.'
+      return 'Duration must be at least 1 minute.'
     }
 
-    if (questions.length === 0) {
-      return 'At least one question is required.'
+    if (form.questions.length === 0) {
+      return 'Add at least one question.'
     }
 
     for (
-      let questionIndex = 0;
-      questionIndex < questions.length;
-      questionIndex++
+      let index = 0;
+      index < form.questions.length;
+      index++
     ) {
       const question =
-        questions[questionIndex]
+        form.questions[index]
 
       if (!question.questionText.trim()) {
         return `Question ${
-          questionIndex + 1
-        } cannot be empty.`
-      }
-
-      const validOptions =
-        question.options.filter(
-          (option) => option.text.trim()
-        )
-
-      if (validOptions.length < 2) {
-        return `Question ${
-          questionIndex + 1
-        } must have at least 2 options.`
+          index + 1
+        } is required.`
       }
 
       const hasEmptyOption =
         question.options.some(
-          (option) => !option.text.trim()
+          (option) =>
+            !option.trim()
         )
 
       if (hasEmptyOption) {
-        return `Please fill all options in Question ${
-          questionIndex + 1
+        return `Fill all options for question ${
+          index + 1
         }.`
-      }
-
-      const correctCount =
-        question.options.filter(
-          (option) => option.isCorrect
-        ).length
-
-      if (correctCount !== 1) {
-        return `Question ${
-          questionIndex + 1
-        } must have exactly one correct answer.`
       }
     }
 
-    return null
+    return ''
   }
 
   // ==========================================
-  // CREATE QUIZ
+  // SUBMIT
   // ==========================================
 
   async function handleSubmit(event) {
@@ -251,10 +237,12 @@ export default function CreateQuiz() {
     }
 
     try {
-      setSaving(true)
+      setLoading(true)
       setError('')
 
       const payload = {
+        ...form,
+
         title: form.title.trim(),
 
         description:
@@ -263,27 +251,25 @@ export default function CreateQuiz() {
         category:
           form.category.trim(),
 
-        difficulty:
-          form.difficulty,
-
         durationMinutes:
           Number(form.durationMinutes),
 
-        questions: questions.map(
-          (question) => ({
-            questionText:
-              question.questionText.trim(),
+        questions:
+          form.questions.map(
+            (question) => ({
+              questionText:
+                question.questionText.trim(),
 
-            options:
-              question.options.map(
-                (option) => ({
-                  text: option.text.trim(),
-                  isCorrect:
-                    option.isCorrect
-                })
-              )
-          })
-        )
+              options:
+                question.options.map(
+                  (option) =>
+                    option.trim()
+                ),
+
+              correctAnswer:
+                question.correctAnswer
+            })
+          )
       }
 
       await api.post(
@@ -303,429 +289,474 @@ export default function CreateQuiz() {
           'Could not create quiz.'
       )
     } finally {
-      setSaving(false)
+      setLoading(false)
     }
   }
 
-  return (
-    <div
-      className="container"
-      style={{
-        maxWidth: 900,
-        paddingTop: 50,
-        paddingBottom: 100
-      }}
-    >
-      {/* Header */}
+  // ==========================================
+  // PAGE
+  // ==========================================
 
+  return (
+    <main className="page">
       <div
+        className="container"
         style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'flex-end',
-          gap: 20,
-          marginBottom: 30
+          maxWidth: 900
         }}
       >
-        <div>
-          <span className="eyebrow">
-            Admin
-          </span>
+        {/* HEADER */}
 
-          <h1
-            style={{
-              fontSize: 36,
-              marginTop: 8,
-              marginBottom: 8
-            }}
-          >
-            Create Quiz
-          </h1>
-
-          <p
-            style={{
-              color: 'var(--muted)',
-              margin: 0
-            }}
-          >
-            Create questions and choose the
-            correct answer for each one.
-          </p>
-        </div>
-
-        <Link
-          to="/admin"
-          className="btn btn-ghost"
-        >
-          Back
-        </Link>
-      </div>
-
-      {error && (
-        <div
-          className="card"
-          style={{
-            borderColor: 'var(--red)',
-            marginBottom: 22,
-            padding: 16
-          }}
-        >
-          <p
-            className="error-text"
-            style={{
-              margin: 0
-            }}
-          >
-            {error}
-          </p>
-        </div>
-      )}
-
-      <form onSubmit={handleSubmit}>
-        {/* ==================================
-            QUIZ INFORMATION
-        =================================== */}
-
-        <div
-          className="card"
-          style={{
-            marginBottom: 22
-          }}
-        >
-          <span className="eyebrow">
-            Quiz information
-          </span>
-
-          <h2
-            style={{
-              fontSize: 24,
-              marginTop: 7,
-              marginBottom: 25
-            }}
-          >
-            Basic Details
-          </h2>
-
-          <div className="field">
-            <label htmlFor="title">
-              Quiz Title
-            </label>
-
-            <input
-              id="title"
-              name="title"
-              className="input"
-              placeholder="e.g. JavaScript Fundamentals"
-              value={form.title}
-              onChange={handleChange}
-            />
-          </div>
-
-          <div className="field">
-            <label htmlFor="description">
-              Description
-            </label>
-
-            <textarea
-              id="description"
-              name="description"
-              className="input"
-              rows="4"
-              placeholder="Write a short description..."
-              value={form.description}
-              onChange={handleChange}
-              style={{
-                resize: 'vertical'
-              }}
-            />
-          </div>
-
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns:
-                'repeat(3, 1fr)',
-              gap: 15
-            }}
-          >
-            <div className="field">
-              <label htmlFor="category">
-                Category
-              </label>
-
-              <input
-                id="category"
-                name="category"
-                className="input"
-                placeholder="React"
-                value={form.category}
-                onChange={handleChange}
-              />
-            </div>
-
-            <div className="field">
-              <label htmlFor="difficulty">
-                Difficulty
-              </label>
-
-              <select
-                id="difficulty"
-                name="difficulty"
-                className="input"
-                value={form.difficulty}
-                onChange={handleChange}
-              >
-                <option value="Easy">
-                  Easy
-                </option>
-
-                <option value="Medium">
-                  Medium
-                </option>
-
-                <option value="Hard">
-                  Hard
-                </option>
-              </select>
-            </div>
-
-            <div className="field">
-              <label htmlFor="durationMinutes">
-                Duration
-              </label>
-
-              <input
-                id="durationMinutes"
-                name="durationMinutes"
-                className="input"
-                type="number"
-                min="1"
-                max="120"
-                value={form.durationMinutes}
-                onChange={handleChange}
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* ==================================
-            QUESTIONS
-        =================================== */}
-
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            marginBottom: 18,
-            marginTop: 40
-          }}
-        >
+        <div className="create-quiz-header">
           <div>
             <span className="eyebrow">
-              Questions
+              Admin panel
             </span>
 
-            <h2
+            <h1
               style={{
-                fontSize: 27,
-                marginTop: 6
+                marginTop: 7,
+                marginBottom: 8,
+                fontSize:
+                  'clamp(28px, 8vw, 40px)'
               }}
             >
-              Quiz Questions
-            </h2>
+              Create Quiz
+            </h1>
+
+            <p
+              style={{
+                margin: 0,
+                maxWidth: 600,
+                color: 'var(--muted)',
+                lineHeight: 1.6
+              }}
+            >
+              Create a new quiz, add
+              questions and choose the
+              correct answer for each one.
+            </p>
           </div>
 
-          <span className="pill">
-            {questions.length}{' '}
-            {questions.length === 1
-              ? 'Question'
-              : 'Questions'}
-          </span>
-        </div>
-
-        {questions.map(
-          (question, questionIndex) => (
-            <div
-              className="card"
-              key={questionIndex}
-              style={{
-                marginBottom: 18
-              }}
-            >
-              {/* Question Header */}
-
-              <div
-                style={{
-                  display: 'flex',
-                  justifyContent:
-                    'space-between',
-                  alignItems: 'center',
-                  gap: 15,
-                  marginBottom: 20
-                }}
-              >
-                <h3
-                  style={{
-                    fontSize: 20
-                  }}
-                >
-                  Question{' '}
-                  {questionIndex + 1}
-                </h3>
-
-                <button
-                  type="button"
-                  className="btn btn-ghost"
-                  onClick={() =>
-                    removeQuestion(
-                      questionIndex
-                    )
-                  }
-                  style={{
-                    padding: '8px 13px',
-                    color: 'var(--red)'
-                  }}
-                >
-                  Remove
-                </button>
-              </div>
-
-              {/* Question */}
-
-              <div className="field">
-                <label>
-                  Question Text
-                </label>
-
-                <input
-                  className="input"
-                  placeholder="Enter your question..."
-                  value={
-                    question.questionText
-                  }
-                  onChange={(event) =>
-                    updateQuestion(
-                      questionIndex,
-                      event.target.value
-                    )
-                  }
-                />
-              </div>
-
-              {/* Options */}
-
-              <label>
-                Options — select the
-                correct answer
-              </label>
-
-              <div
-                style={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: 12,
-                  marginTop: 10
-                }}
-              >
-                {question.options.map(
-                  (option, optionIndex) => (
-                    <div
-                      key={optionIndex}
-                      style={{
-                        display: 'grid',
-                        gridTemplateColumns:
-                          '42px 1fr',
-                        gap: 10,
-                        alignItems: 'center'
-                      }}
-                    >
-                      <input
-                        type="radio"
-                        name={`correct-${questionIndex}`}
-                        checked={
-                          option.isCorrect
-                        }
-                        onChange={() =>
-                          setCorrectOption(
-                            questionIndex,
-                            optionIndex
-                          )
-                        }
-                        style={{
-                          width: 18,
-                          height: 18,
-                          margin: '0 auto',
-                          accentColor:
-                            'var(--amber)'
-                        }}
-                      />
-
-                      <input
-                        className="input"
-                        placeholder={`Option ${String.fromCharCode(
-                          65 + optionIndex
-                        )}`}
-                        value={option.text}
-                        onChange={(event) =>
-                          updateOption(
-                            questionIndex,
-                            optionIndex,
-                            event.target.value
-                          )
-                        }
-                      />
-                    </div>
-                  )
-                )}
-              </div>
-            </div>
-          )
-        )}
-
-        {/* Add Question */}
-
-        <button
-          type="button"
-          className="btn btn-ghost"
-          onClick={addQuestion}
-          style={{
-            width: '100%',
-            marginTop: 5,
-            marginBottom: 30,
-            borderStyle: 'dashed'
-          }}
-        >
-          + Add Another Question
-        </button>
-
-        {/* Bottom Actions */}
-
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'flex-end',
-            gap: 12
-          }}
-        >
           <Link
             to="/admin"
             className="btn btn-ghost"
           >
-            Cancel
+            ← Admin Panel
           </Link>
+        </div>
+
+        {/* ERROR */}
+
+        {error && (
+          <div
+            role="alert"
+            style={{
+              marginBottom: 20,
+              padding: '12px 14px',
+              border:
+                '1px solid rgba(232, 85, 63, 0.4)',
+              borderRadius: 10,
+              background:
+                'rgba(232, 85, 63, 0.08)'
+            }}
+          >
+            <p
+              className="error-text"
+              style={{
+                margin: 0
+              }}
+            >
+              {error}
+            </p>
+          </div>
+        )}
+
+        <form
+          onSubmit={handleSubmit}
+          className="create-quiz-form"
+        >
+          {/* ==================================
+              QUIZ DETAILS
+          =================================== */}
+
+          <section className="card">
+            <span className="eyebrow">
+              Quiz details
+            </span>
+
+            <h2
+              style={{
+                marginTop: 6,
+                marginBottom: 22
+              }}
+            >
+              Basic Information
+            </h2>
+
+            <div className="create-quiz-fields">
+              {/* TITLE */}
+
+              <div className="form-group create-quiz-full-field">
+                <label htmlFor="quiz-title">
+                  Quiz Title
+                </label>
+
+                <input
+                  id="quiz-title"
+                  type="text"
+                  name="title"
+                  value={form.title}
+                  onChange={handleChange}
+                  placeholder="JavaScript Basics"
+                  required
+                />
+              </div>
+
+              {/* DESCRIPTION */}
+
+              <div className="form-group create-quiz-full-field">
+                <label htmlFor="quiz-description">
+                  Description
+                </label>
+
+                <textarea
+                  id="quiz-description"
+                  name="description"
+                  value={form.description}
+                  onChange={handleChange}
+                  placeholder="Test your JavaScript knowledge..."
+                  rows={4}
+                />
+              </div>
+
+              {/* CATEGORY */}
+
+              <div className="form-group">
+                <label htmlFor="quiz-category">
+                  Category
+                </label>
+
+                <input
+                  id="quiz-category"
+                  type="text"
+                  name="category"
+                  value={form.category}
+                  onChange={handleChange}
+                  placeholder="Programming"
+                  required
+                />
+              </div>
+
+              {/* DIFFICULTY */}
+
+              <div className="form-group">
+                <label htmlFor="quiz-difficulty">
+                  Difficulty
+                </label>
+
+                <select
+                  id="quiz-difficulty"
+                  name="difficulty"
+                  value={form.difficulty}
+                  onChange={handleChange}
+                >
+                  <option value="Easy">
+                    Easy
+                  </option>
+
+                  <option value="Medium">
+                    Medium
+                  </option>
+
+                  <option value="Hard">
+                    Hard
+                  </option>
+                </select>
+              </div>
+
+              {/* DURATION */}
+
+              <div className="form-group">
+                <label htmlFor="quiz-duration">
+                  Duration (minutes)
+                </label>
+
+                <input
+                  id="quiz-duration"
+                  type="number"
+                  name="durationMinutes"
+                  min="1"
+                  value={
+                    form.durationMinutes
+                  }
+                  onChange={handleChange}
+                  required
+                />
+              </div>
+            </div>
+          </section>
+
+          {/* ==================================
+              QUESTIONS HEADER
+          =================================== */}
+
+          <div className="create-question-header">
+            <div>
+              <span className="eyebrow">
+                Questions
+              </span>
+
+              <h2
+                style={{
+                  marginTop: 5,
+                  marginBottom: 0
+                }}
+              >
+                Quiz Questions
+              </h2>
+            </div>
+
+            <span className="pill">
+              {form.questions.length}{' '}
+              {form.questions.length === 1
+                ? 'question'
+                : 'questions'}
+            </span>
+          </div>
+
+          {/* ==================================
+              QUESTIONS
+          =================================== */}
+
+          <div className="create-question-list">
+            {form.questions.map(
+              (question, questionIndex) => (
+                <QuestionCard
+                  key={questionIndex}
+                  question={question}
+                  questionIndex={
+                    questionIndex
+                  }
+                  totalQuestions={
+                    form.questions.length
+                  }
+                  onQuestionChange={
+                    handleQuestionChange
+                  }
+                  onOptionChange={
+                    handleOptionChange
+                  }
+                  onCorrectAnswer={
+                    handleCorrectAnswer
+                  }
+                  onRemove={
+                    removeQuestion
+                  }
+                />
+              )
+            )}
+          </div>
+
+          {/* ADD QUESTION */}
 
           <button
-            type="submit"
-            className="btn btn-primary"
-            disabled={saving}
+            type="button"
+            className="btn btn-ghost create-add-question"
+            onClick={addQuestion}
           >
-            {saving
-              ? 'Creating...'
-              : 'Create Quiz'}
+            + Add Another Question
           </button>
+
+          {/* ==================================
+              FORM ACTIONS
+          =================================== */}
+
+          <div className="create-quiz-actions">
+            <Link
+              to="/admin"
+              className="btn btn-ghost"
+            >
+              Cancel
+            </Link>
+
+            <button
+              type="submit"
+              className="btn btn-primary"
+              disabled={loading}
+            >
+              {loading
+                ? 'Creating...'
+                : 'Create Quiz'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </main>
+  )
+}
+
+// ==========================================
+// QUESTION CARD
+// ==========================================
+
+function QuestionCard({
+  question,
+  questionIndex,
+  totalQuestions,
+  onQuestionChange,
+  onOptionChange,
+  onCorrectAnswer,
+  onRemove
+}) {
+  return (
+    <section className="card create-question-card">
+      {/* HEADER */}
+
+      <div className="question-card-header">
+        <div>
+          <span className="eyebrow">
+            Question
+          </span>
+
+          <h3
+            style={{
+              marginTop: 5,
+              marginBottom: 0
+            }}
+          >
+            Question {questionIndex + 1}
+          </h3>
         </div>
-      </form>
-    </div>
+
+        {totalQuestions > 1 && (
+          <button
+            type="button"
+            className="btn btn-ghost question-remove-button"
+            onClick={() =>
+              onRemove(questionIndex)
+            }
+          >
+            Remove
+          </button>
+        )}
+      </div>
+
+      {/* QUESTION TEXT */}
+
+      <div className="form-group">
+        <label
+          htmlFor={`question-${questionIndex}`}
+        >
+          Question Text
+        </label>
+
+        <textarea
+          id={`question-${questionIndex}`}
+          value={question.questionText}
+          onChange={(event) =>
+            onQuestionChange(
+              questionIndex,
+              event.target.value
+            )
+          }
+          placeholder="Enter your question..."
+          rows={3}
+          required
+        />
+      </div>
+
+      {/* OPTIONS */}
+
+      <div
+        style={{
+          marginTop: 22
+        }}
+      >
+        <div
+          style={{
+            display: 'flex',
+            justifyContent:
+              'space-between',
+            gap: 12,
+            flexWrap: 'wrap',
+            marginBottom: 12
+          }}
+        >
+          <div>
+            <span className="eyebrow">
+              Answer options
+            </span>
+
+            <p
+              style={{
+                margin: '5px 0 0',
+                color: 'var(--muted)',
+                fontSize: 12
+              }}
+            >
+              Select the correct answer.
+            </p>
+          </div>
+        </div>
+
+        <div className="question-options-grid">
+          {question.options.map(
+            (option, optionIndex) => {
+              const isCorrect =
+                question.correctAnswer ===
+                optionIndex
+
+              return (
+                <label
+                  key={optionIndex}
+                  className={`question-option-editor ${
+                    isCorrect
+                      ? 'question-option-correct'
+                      : ''
+                  }`}
+                >
+                  <div className="question-option-radio">
+                    <input
+                      type="radio"
+                      name={`correct-${questionIndex}`}
+                      checked={isCorrect}
+                      onChange={() =>
+                        onCorrectAnswer(
+                          questionIndex,
+                          optionIndex
+                        )
+                      }
+                    />
+
+                    <span>
+                      {String.fromCharCode(
+                        65 + optionIndex
+                      )}
+                    </span>
+                  </div>
+
+                  <input
+                    type="text"
+                    value={option}
+                    onChange={(event) =>
+                      onOptionChange(
+                        questionIndex,
+                        optionIndex,
+                        event.target.value
+                      )
+                    }
+                    placeholder={`Option ${
+                      optionIndex + 1
+                    }`}
+                    required
+                  />
+                </label>
+              )
+            }
+          )}
+        </div>
+      </div>
+    </section>
   )
 }

@@ -1,93 +1,67 @@
-import { Link, useNavigate } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import {
+  Link,
+  useLocation,
+  useNavigate
+} from 'react-router-dom'
+
 import { useAuth } from '../context/AuthContext'
 
 export default function Navbar() {
   const { user, logout } = useAuth()
-  const navigate = useNavigate()
 
-  // ==========================================
-  // LOGOUT
-  // ==========================================
+  const navigate = useNavigate()
+  const location = useLocation()
+
+  const [menuOpen, setMenuOpen] =
+    useState(false)
+
+  // Route change hone par mobile menu close
+  useEffect(() => {
+    setMenuOpen(false)
+  }, [location.pathname])
 
   function handleLogout() {
+    setMenuOpen(false)
     logout()
     navigate('/login')
   }
 
+  function toggleMenu() {
+    setMenuOpen((current) => !current)
+  }
+
   return (
-    <header
-      style={{
-        borderBottom: '1px solid var(--border)'
-      }}
-    >
-      <div
-        className="container"
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          padding: '18px 24px',
-          gap: 20
-        }}
-      >
+    <header className="navbar">
+      <div className="container navbar-container">
         {/* ==================================
             LOGO
         =================================== */}
 
         <Link
           to="/"
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 10,
-            flexShrink: 0
-          }}
+          className="navbar-brand"
+          aria-label="Quiz Master Home"
         >
-          <span
-            style={{
-              width: 34,
-              height: 34,
-              borderRadius: 8,
-              background: 'var(--amber)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontFamily: 'var(--font-display)',
-              fontWeight: 700,
-              color: 'var(--ink)'
-            }}
-          >
+          <span className="navbar-logo">
             Q
           </span>
 
-          <span
-            style={{
-              fontFamily: 'var(--font-display)',
-              fontWeight: 600,
-              fontSize: 18
-            }}
-          >
+          <span className="navbar-title">
             Quiz Master
           </span>
         </Link>
 
         {/* ==================================
-            NAVIGATION
+            DESKTOP NAVIGATION
         =================================== */}
 
         <nav
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'flex-end',
-            gap: 12,
-            flexWrap: 'wrap'
-          }}
+          className="navbar-desktop"
+          aria-label="Main navigation"
         >
           {user ? (
             <>
-              {/* Dashboard */}
-
               <Link
                 to="/dashboard"
                 className="pill"
@@ -95,91 +69,16 @@ export default function Navbar() {
                 Dashboard
               </Link>
 
-              {/* History */}
-
-              <Link
-                to="/history"
-                className="pill"
-              >
-                History
-              </Link>
-
-              {/* ==================================
-                  ADMIN ONLY
-              =================================== */}
-
               {user.role === 'admin' && (
-                <>
-                  {/* Admin Dashboard */}
-
-                  <Link
-                    to="/admin"
-                    className="pill"
-                    style={{
-                      color: 'var(--amber)',
-                      borderColor: 'var(--amber)'
-                    }}
-                  >
-                    Admin
-                  </Link>
-
-                  {/* User Management */}
-
-                  <Link
-                    to="/admin/users"
-                    className="pill"
-                    style={{
-                      color: 'var(--teal)',
-                      borderColor: 'var(--teal)'
-                    }}
-                  >
-                    Users
-                  </Link>
-                </>
+                <Link
+                  to="/admin"
+                  className="pill navbar-admin-link"
+                >
+                  Admin
+                </Link>
               )}
 
-              {/* ==================================
-                  USER INFO
-              =================================== */}
-
-              <div
-                style={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'flex-end',
-                  gap: 2,
-                  marginLeft: 5
-                }}
-              >
-                <span
-                  style={{
-                    fontFamily: 'var(--font-mono)',
-                    fontSize: 13,
-                    color: 'var(--paper)'
-                  }}
-                >
-                  {user.name}
-                </span>
-
-                <span
-                  style={{
-                    fontFamily: 'var(--font-mono)',
-                    fontSize: 10,
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.08em',
-                    color:
-                      user.role === 'admin'
-                        ? 'var(--amber)'
-                        : 'var(--muted)'
-                  }}
-                >
-                  {user.role || 'user'}
-                </span>
-              </div>
-
-              {/* ==================================
-                  LOGOUT
-              =================================== */}
+              <UserInfo user={user} />
 
               <button
                 type="button"
@@ -191,16 +90,12 @@ export default function Navbar() {
             </>
           ) : (
             <>
-              {/* Login */}
-
               <Link
                 to="/login"
                 className="btn btn-ghost"
               >
                 Log in
               </Link>
-
-              {/* Register */}
 
               <Link
                 to="/register"
@@ -211,7 +106,211 @@ export default function Navbar() {
             </>
           )}
         </nav>
+
+        {/* ==================================
+            MOBILE MENU BUTTON
+        =================================== */}
+
+        <button
+          type="button"
+          className="navbar-menu-button"
+          onClick={toggleMenu}
+          aria-label={
+            menuOpen
+              ? 'Close navigation menu'
+              : 'Open navigation menu'
+          }
+          aria-expanded={menuOpen}
+          aria-controls="mobile-navigation"
+        >
+          <span
+            className={`navbar-menu-line ${
+              menuOpen
+                ? 'navbar-menu-line-1-open'
+                : ''
+            }`}
+          />
+
+          <span
+            className={`navbar-menu-line ${
+              menuOpen
+                ? 'navbar-menu-line-2-open'
+                : ''
+            }`}
+          />
+
+          <span
+            className={`navbar-menu-line ${
+              menuOpen
+                ? 'navbar-menu-line-3-open'
+                : ''
+            }`}
+          />
+        </button>
+      </div>
+
+      {/* ==================================
+          MOBILE NAVIGATION
+      =================================== */}
+
+      <div
+        id="mobile-navigation"
+        className={`navbar-mobile ${
+          menuOpen
+            ? 'navbar-mobile-open'
+            : ''
+        }`}
+      >
+        <div className="container navbar-mobile-inner">
+          {user ? (
+            <>
+              {/* USER */}
+
+              <div className="navbar-mobile-user">
+                <div className="navbar-mobile-avatar">
+                  {getInitial(user.name)}
+                </div>
+
+                <div className="navbar-mobile-user-info">
+                  <strong>
+                    {user.name || 'User'}
+                  </strong>
+
+                  <span>
+                    {user.role || 'user'}
+                  </span>
+                </div>
+              </div>
+
+              {/* LINKS */}
+
+              <nav
+                className="navbar-mobile-links"
+                aria-label="Mobile navigation"
+              >
+                <Link
+                  to="/"
+                  className="navbar-mobile-link"
+                >
+                  <span>Home</span>
+                  <span aria-hidden="true">
+                    →
+                  </span>
+                </Link>
+
+                <Link
+                  to="/dashboard"
+                  className="navbar-mobile-link"
+                >
+                  <span>Dashboard</span>
+                  <span aria-hidden="true">
+                    →
+                  </span>
+                </Link>
+
+                {user.role === 'admin' && (
+                  <>
+                    <Link
+                      to="/admin"
+                      className="navbar-mobile-link navbar-mobile-admin"
+                    >
+                      <span>
+                        Admin Panel
+                      </span>
+
+                      <span aria-hidden="true">
+                        →
+                      </span>
+                    </Link>
+
+                    <Link
+                      to="/admin/users"
+                      className="navbar-mobile-link"
+                    >
+                      <span>
+                        Manage Users
+                      </span>
+
+                      <span aria-hidden="true">
+                        →
+                      </span>
+                    </Link>
+                  </>
+                )}
+              </nav>
+
+              {/* LOGOUT */}
+
+              <button
+                type="button"
+                className="btn btn-ghost navbar-mobile-logout"
+                onClick={handleLogout}
+              >
+                Log out
+              </button>
+            </>
+          ) : (
+            <div className="navbar-mobile-guest">
+              <Link
+                to="/login"
+                className="btn btn-ghost"
+              >
+                Log in
+              </Link>
+
+              <Link
+                to="/register"
+                className="btn btn-primary"
+              >
+                Sign up
+              </Link>
+            </div>
+          )}
+        </div>
       </div>
     </header>
   )
+}
+
+// ==========================================
+// DESKTOP USER INFO
+// ==========================================
+
+function UserInfo({ user }) {
+  const isAdmin =
+    user.role === 'admin'
+
+  return (
+    <div className="navbar-user-info">
+      <span className="navbar-user-name">
+        {user.name || 'User'}
+      </span>
+
+      <span
+        className="navbar-user-role"
+        style={{
+          color: isAdmin
+            ? 'var(--amber)'
+            : 'var(--muted)'
+        }}
+      >
+        {user.role || 'user'}
+      </span>
+    </div>
+  )
+}
+
+// ==========================================
+// USER INITIAL
+// ==========================================
+
+function getInitial(name) {
+  if (!name) {
+    return 'U'
+  }
+
+  return name
+    .trim()
+    .charAt(0)
+    .toUpperCase()
 }

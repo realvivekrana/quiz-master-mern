@@ -1,4 +1,8 @@
-import { Route, Routes } from 'react-router-dom'
+import {
+  Link,
+  Route,
+  Routes
+} from 'react-router-dom'
 
 // ==========================================
 // COMPONENTS
@@ -16,19 +20,19 @@ import Home from './pages/Home'
 import Login from './pages/Login'
 import Register from './pages/Register'
 import Dashboard from './pages/Dashboard'
+import History from './pages/History'
 import QuizPlay from './pages/QuizPlay'
 import Result from './pages/Result'
 import Leaderboard from './pages/Leaderboard'
-import QuizHistory from './pages/QuizHistory'
 
 // ==========================================
 // ADMIN PAGES
 // ==========================================
 
 import AdminDashboard from './pages/AdminDashboard'
+import AdminUsers from './pages/AdminUsers'
 import CreateQuiz from './pages/CreateQuiz'
 import EditQuiz from './pages/EditQuiz'
-import AdminUsers from './pages/AdminUsers'
 
 // ==========================================
 // APP
@@ -37,7 +41,15 @@ import AdminUsers from './pages/AdminUsers'
 export default function App() {
   return (
     <>
+      {/* ==================================
+          GLOBAL NAVBAR
+      =================================== */}
+
       <Navbar />
+
+      {/* ==================================
+          APPLICATION ROUTES
+      =================================== */}
 
       <Routes>
         {/* ==================================
@@ -45,28 +57,32 @@ export default function App() {
         =================================== */}
 
         {/* Home */}
+
         <Route
           path="/"
           element={<Home />}
         />
 
         {/* Login */}
+
         <Route
           path="/login"
           element={<Login />}
         />
 
         {/* Register */}
+
         <Route
           path="/register"
           element={<Register />}
         />
 
         {/* ==================================
-            USER ROUTES
+            AUTHENTICATED USER ROUTES
         =================================== */}
 
         {/* Dashboard */}
+
         <Route
           path="/dashboard"
           element={
@@ -77,16 +93,18 @@ export default function App() {
         />
 
         {/* Quiz History */}
+
         <Route
           path="/history"
           element={
             <PrivateRoute>
-              <QuizHistory />
+              <History />
             </PrivateRoute>
           }
         />
 
         {/* Play Quiz */}
+
         <Route
           path="/quiz/:id"
           element={
@@ -97,6 +115,7 @@ export default function App() {
         />
 
         {/* Quiz Result */}
+
         <Route
           path="/result/:id"
           element={
@@ -107,6 +126,7 @@ export default function App() {
         />
 
         {/* Quiz Leaderboard */}
+
         <Route
           path="/quiz/:id/leaderboard"
           element={
@@ -121,6 +141,7 @@ export default function App() {
         =================================== */}
 
         {/* Admin Dashboard */}
+
         <Route
           path="/admin"
           element={
@@ -130,7 +151,8 @@ export default function App() {
           }
         />
 
-        {/* Admin User Management */}
+        {/* Admin Users */}
+
         <Route
           path="/admin/users"
           element={
@@ -141,6 +163,7 @@ export default function App() {
         />
 
         {/* Create Quiz */}
+
         <Route
           path="/admin/quizzes/create"
           element={
@@ -151,6 +174,7 @@ export default function App() {
         />
 
         {/* Edit Quiz */}
+
         <Route
           path="/admin/quizzes/:id/edit"
           element={
@@ -159,7 +183,80 @@ export default function App() {
             </AdminRoute>
           }
         />
+
+        {/* ==================================
+            404 ROUTE
+        =================================== */}
+
+        <Route
+          path="*"
+          element={<NotFound />}
+        />
       </Routes>
     </>
+  )
+}
+
+// ==========================================
+// 404 PAGE
+// ==========================================
+
+function NotFound() {
+  return (
+    <main className="page">
+      <div
+        className="container"
+        style={{
+          maxWidth: 650
+        }}
+      >
+        <div
+          className="card"
+          style={{
+            textAlign: 'center',
+            paddingBlock: 50
+          }}
+        >
+          <span
+            className="eyebrow"
+            style={{
+              color: 'var(--amber)'
+            }}
+          >
+            Error 404
+          </span>
+
+          <h1
+            style={{
+              marginTop: 8,
+              marginBottom: 10,
+              fontSize:
+                'clamp(30px, 9vw, 44px)'
+            }}
+          >
+            Page not found
+          </h1>
+
+          <p
+            style={{
+              maxWidth: 450,
+              margin: '0 auto 24px',
+              color: 'var(--muted)',
+              lineHeight: 1.7
+            }}
+          >
+            The page you are looking for does
+            not exist or may have been moved.
+          </p>
+
+          <Link
+            to="/"
+            className="btn btn-primary"
+          >
+            Back to Home
+          </Link>
+        </div>
+      </div>
+    </main>
   )
 }
